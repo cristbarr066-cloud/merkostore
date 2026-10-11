@@ -58,9 +58,9 @@ public class ChatbotService {
         // 1. Guardar mensaje del usuario en BD
         saveMessage(conversationId, storeId, "user", userText, "USER_INPUT");
 
-        // 2. Obtener contexto de negocio en tiempo real (RAG Liviano)
-        StoreConfig storeConfig = storeConfigRepository.findByStoreId(storeId).orElse(null);
-        List<Product> availableProducts = productRepository.findByStoreIdAndIsAvailableTrue(storeId);
+        // 2. Obtener contexto de negocio en tiempo real (RAG Liviano conectado a los productos reales)
+        StoreConfig storeConfig = resolveStoreConfig(request, storeId);
+        List<Product> availableProducts = resolveAvailableProducts(request, storeId);
 
         // 3. Intentar procesar con LLM (Groq / Llama) si hay API Key configurada
         String botReply = null;
@@ -76,7 +76,7 @@ public class ChatbotService {
             }
         }
 
-        // 4. Si no hay LLM configurado o falló, procesar con Motor Experto de Dominio Merkostore
+        // 4. Si no hay LLM configurado o falló, procesar con Motor Experto de Dominio conectado a la tienda real
         if (botReply == null || botReply.isBlank()) {
             DomainProcessingResult result = processWithDomainEngine(userText, storeConfig, availableProducts);
             botReply = result.reply;
@@ -84,7 +84,7 @@ public class ChatbotService {
             matchedSummaries = result.matchedProducts;
         }
 
-        // 5. Generar sugerencias dinámicas de preguntas para el usuario
+        // 5. Generar sugerencias dinámicas basadas EXCLUSIVAMENTE en los productos reales del negocio
         List<String> suggestions = generateSuggestions(detectedIntent, availableProducts);
 
         // 6. Guardar respuesta del bot en BD
@@ -101,19 +101,62 @@ public class ChatbotService {
     }
 
     public List<String> getInitialSuggestions() {
-        return List.of(
-                "🔥 ¿Qué promociones hay hoy?",
-                "🥛 ¿Tienen leche y huevos?",
-                "🛵 ¿Cuánto vale el domicilio?",
-                "💳 ¿Cuáles son los métodos de pago?",
-                "📍 ¿Cuál es el horario y dirección?"
-        );
+        List<Product> prods = productRepository.findByStoreIdAndIsAvailableTrue("default-store");
+        return generateSuggestions("GREETING", prods);
     }
 
-    private void saveMessage(String convId, String storeId, String role, String content, String intent) {
+    private StoreConfig resolveStoreConfig(ChatRequest request, String storeId) {
+        if (request.getStoreConfig() != null) {
+            ChatRequest.StoreConfigContext c = request.getStoreConfig();
+            return StoreConfig.builder()
+                    .storeId(storeId)
+                    .storeName(c.getStoreName() != null ? c.getStoreName() : "Don Pedro - Tienda de Barrio")
+                    .whatsappPhone(c.getWhatsappPhone() != null ? c.getWhatsappPhone() : "573001234567")
+                    .address(c.getAddress() != null ? c.getAddress() : "Calle 45 # 23 - 10 Barrio El Prado")
+                    .deliveryFee(c.getDeliveryFee() != null ? c.getDeliveryFee() : new BigDecimal("3000"))
+                    .minimumOrder(c.getMinimumOrder() != null ? c.getMinimumOrder() : new BigDecimal("10000"))
+                    .isStoreOpen(c.getIsStoreOpen() != null ? c.getIsStoreOpen() : true)
+                    .build();
+        }
+        return storeConfigRepository.findByStoreId(storeId).orElseGet(() -> StoreConfig.builder()
+                .storeId(storeId)
+                .storeName("Don Pedro - Tienda de Barrio")
+                .whatsappPhone("573001234567")
+                .address("Calle 45 # 23 - 10 Barrio El Prado")
+                .deliveryFee(new BigDecimal("3000"))
+                .minimumOrder(new BigDecimal("10000"))
+                .isStoreOpen(true)
+                .build());
+    }
+
+    private List<Product> resolveAvailableProducts(ChatRequest request, String storeId) {
+        // Si el cliente envía el catálogo activo en tiempo real (directamente sincronizado con el negocio/UI)
+        if (request.getCurrentCatalog() != null && !request.getCurrentCatalog().isEmpty()) {
+            return request.getCurrentCatalog().stream()
+                    .filter(item -> item.getIsAvailable() == null || Boolean.TRUE.equals(item.getIsAvailable()))
+                    .<Product>map(item -> Product.builder()
+                            .id(item.getId())
+                            .name(item.getName())
+                            .description(item.getDescription())
+                            .price(item.getPrice() != null ? item.getPrice() : BigDecimal.ZERO)
+                            .discountPrice(item.getDiscountPrice())
+                            .stock(item.getStock() != null ? item.getStock() : 1)
+                            .unit(item.getUnit() != null ? item.getUnit() : "UND")
+                            .categoryId(item.getCategory() != null ? item.getCategory() : "cat1")
+                            .imageUrl(item.getImageUrl())
+                            .isAvailable(true)
+                            .storeId(storeId)
+                            .build())
+                    .toList();
+        }
+        // De lo contrario, usar MongoDB
+        return productRepository.findByStoreIdAndIsAvailableTrue(storeId);
+    }
+
+    private void saveMessage(String conversationId, String storeId, String role, String content, String intent) {
         try {
             ChatMessage msg = ChatMessage.builder()
-                    .conversationId(convId)
+                    .conversationId(conversationId)
                     .storeId(storeId)
                     .role(role)
                     .content(content)
@@ -121,22 +164,17 @@ public class ChatbotService {
                     .timestamp(LocalDateTime.now())
                     .build();
             chatMessageRepository.save(msg);
-        } catch (Exception ex) {
-            log.error("Error guardando historial de chat: {}", ex.getMessage());
+        } catch (Exception e) {
+            log.error("Error al persistir mensaje de chat: {}", e.getMessage());
         }
     }
 
-    /**
-     * Integración REST con LLM Externo (Groq Cloud API con Llama 3)
-     */
-    private String callGroqLlm(String userText, StoreConfig config, List<Product> products, String convId) {
+    private String callGroqLlm(String userText, StoreConfig config, List<Product> products, String conversationId) {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.setBearerAuth(groqApiKey);
 
-        // Construir catálogo resumido para el prompt del sistema
         String catalogSummary = products.stream()
-                .limit(25)
                 .map(p -> String.format("- %s: $%s COP (Stock: %d %s)",
                         p.getName(),
                         formatMoney(p.getDiscountPrice() != null ? p.getDiscountPrice() : p.getPrice()),
@@ -149,17 +187,17 @@ public class ChatbotService {
         String minOrder = config != null && config.getMinimumOrder() != null ? formatMoney(config.getMinimumOrder()) : "10.000";
 
         String systemPrompt = String.format(
-                "Eres MerkoBot, el asistente inteligente y amigable de la tienda de barrio '%s'. " +
-                "Tu objetivo es ayudar a los vecinos y clientes a consultar productos, precios, ofertas, " +
-                "hacer pedidos por WhatsApp o en la app, y resolver dudas de domicilios.\n\n" +
-                "REGLAS:\n" +
+                "Eres MerkoBot, el asistente inteligente y amigable de la tienda '%s'. " +
+                "Tu objetivo es ayudar a los clientes a consultar productos reales, precios, ofertas, " +
+                "y resolver dudas de domicilios.\n\n" +
+                "REGLAS ESTRICTAS DE NEGOCIO:\n" +
                 "1. Responde de manera cálida, colombiana y profesional, con emojis adecuados.\n" +
                 "2. El domicilio cuesta $%s COP y el pedido mínimo es $%s COP.\n" +
-                "3. Métodos de pago: WhatsApp, Nequi, Daviplata, PSE y Contra-entrega en efectivo.\n" +
-                "4. Catálogo actual en tiempo real:\n%s\n\n" +
-                "5. Si el cliente pregunta por un producto que no está en la lista, dile amablemente que verificarás con Don Pedro el tiendero.\n" +
-                "6. Sé conciso y al grano.",
-                storeName, deliveryFee, minOrder, catalogSummary
+                "3. Métodos de pago: WhatsApp, Nequi, Daviplata y Efectivo Contra-entrega.\n" +
+                "4. CATÁLOGO REAL EN TIEMPO REAL (ESTOS SON LOS ÚNICOS PRODUCTOS QUE EXISTEN EN LA TIENDA):\n%s\n\n" +
+                "5. ¡REGLA CRÍTICA! NUNCA inventes productos ni marcas que no estén en la lista anterior. Si el cliente pregunta por un producto que NO está en la lista (por ejemplo, si pregunta por algo que no vendemos), indícale amablemente que en este momento no lo tenemos disponible en el inventario de %s y sugiérele los productos que SÍ tenemos.\n" +
+                "6. Sé conciso y claro.",
+                storeName, deliveryFee, minOrder, catalogSummary, storeName
         );
 
         Map<String, Object> systemMessage = Map.of("role", "system", "content", systemPrompt);
@@ -168,7 +206,7 @@ public class ChatbotService {
         Map<String, Object> requestBody = Map.of(
                 "model", groqModel,
                 "messages", List.of(systemMessage, userMessage),
-                "temperature", 0.6,
+                "temperature", 0.4,
                 "max_tokens", 350
         );
 
@@ -190,7 +228,7 @@ public class ChatbotService {
     }
 
     /**
-     * Motor Experto de Dominio Autónomo para Merkostore (Garantiza disponibilidad offline / sin API key externa)
+     * Motor Experto de Dominio Autónomo para Merkostore (Garantiza disponibilidad y fidelidad con los productos reales)
      */
     private DomainProcessingResult processWithDomainEngine(String query, StoreConfig config, List<Product> products) {
         String lower = query.toLowerCase();
@@ -202,7 +240,7 @@ public class ChatbotService {
         if (lower.matches(".*(hola|buenos d[ií]as|buenas tardes|buenas noches|hey|saludos).*")) {
             return new DomainProcessingResult(
                     "👋 ¡Hola! Bienvenido a *" + storeName + "*. Soy **MerkoBot**, tu asesor de compras inteligente. " +
-                    "¿En qué te puedo colaborar hoy? Puedes consultarme por productos, precios, ofertas del día o información de envíos.",
+                    "¿En qué te puedo colaborar hoy? Puedes consultarme por nuestros productos en inventario, precios, ofertas del día o información de envíos.",
                     "GREETING",
                     Collections.emptyList()
             );
@@ -215,7 +253,7 @@ public class ChatbotService {
                     "• **Tarifa fija:** $" + deliveryFee + " COP en el sector.\n" +
                     "• **Pedido mínimo:** $" + minOrder + " COP.\n" +
                     "• **Tiempo estimado:** Entre 15 y 25 minutos directo a tu puerta.\n" +
-                    "• **¡Super Promo!** Por compras superiores a $30.000 COP tu envío es **GRATIS** hoy.",
+                    "• **¡Envío Gratis!** Por compras superiores a $30.000 COP tu envío es sin costo.",
                     "DELIVERY_INFO",
                     Collections.emptyList()
             );
@@ -224,10 +262,10 @@ public class ChatbotService {
         // Métodos de pago
         if (lower.contains("pago") || lower.contains("pagar") || lower.contains("nequi") || lower.contains("daviplata") || lower.contains("efectivo") || lower.contains("tarjeta")) {
             return new DomainProcessingResult(
-                    "💳 **Métodos de Pago Disponibles:**\n\n" +
+                    "💳 **Métodos de Pago Disponibles en " + storeName + ":**\n\n" +
                     "1. 📲 **Nequi y Daviplata:** Pagas en línea o al repartidor al recibir.\n" +
                     "2. 💵 **Efectivo / Contra-entrega:** Indícanos con cuánto vas a pagar para enviarte el cambio exacto.\n" +
-                    "3. 💬 **WhatsApp Directo:** Coordina transferencias directas con Don Pedro.",
+                    "3. 💬 **WhatsApp Directo:** Coordina pedidos y transferencias directamente.",
                     "PAYMENT_INFO",
                     Collections.emptyList()
             );
@@ -240,42 +278,40 @@ public class ChatbotService {
                     "📍 **Ubicación y Horarios:**\n\n" +
                     "• **Dirección:** " + address + "\n" +
                     "• **Horario:** Lunes a Domingo de 7:00 a.m. a 9:30 p.m. (Jornada continua).\n" +
-                    "• **Estado actual:** " + (config != null && Boolean.TRUE.equals(config.getIsStoreOpen()) ? "🟢 ¡Estamos ABIERTOS y despachando!" : "🟡 Consúltanos por WhatsApp."),
+                    "• **Estado actual:** " + (config != null && Boolean.TRUE.equals(config.getIsStoreOpen()) ? "🟢 ¡Estamos ABIERTOS y atendiendo pedidos!" : "🟡 Consúltanos por WhatsApp."),
                     "STORE_INFO",
                     Collections.emptyList()
             );
         }
 
-        // Ofertas / Descuentos
+        // Ofertas / Descuentos REALES
         if (lower.contains("oferta") || lower.contains("descuento") || lower.contains("promocion") || lower.contains("promoción") || lower.contains("barato")) {
             List<Product> discounted = products.stream()
                     .filter(p -> p.getDiscountPrice() != null && p.getDiscountPrice().compareTo(BigDecimal.ZERO) > 0)
-                    .limit(5)
+                    .limit(4)
                     .toList();
 
             if (!discounted.isEmpty()) {
-                StringBuilder sb = new StringBuilder("🔥 **¡Ofertas destacadas del día en " + storeName + "!**\n\n");
+                StringBuilder sb = new StringBuilder("🔥 **¡Ofertas destacadas activas en " + storeName + "!**\n\n");
                 List<ChatResponse.ProductSummary> summaries = new ArrayList<>();
                 for (Product p : discounted) {
                     sb.append("• **").append(p.getName()).append("**: Ahora a **$").append(formatMoney(p.getDiscountPrice()))
-                            .append(" COP** (Antes: $").append(formatMoney(p.getPrice())).append(" COP) - Stock: ")
-                            .append(p.getStock()).append(" ").append(p.getUnit()).append("\n");
+                            .append(" COP** (Antes: $").append(formatMoney(p.getPrice())).append(" COP)\n");
                     summaries.add(toSummary(p));
                 }
-                sb.append("\n🛒 Puedes agregarlos directamente a tu carrito desde la tienda.");
+                sb.append("\n🛒 Puedes agregarlos directamente a tu carrito desde las tarjetas de abajo.");
                 return new DomainProcessingResult(sb.toString(), "DISCOUNTS", summaries);
             }
         }
 
-        // Búsqueda inteligente de productos en catálogo
+        // Búsqueda inteligente de productos en el catálogo real
         List<Product> matched = products.stream()
                 .filter(p -> {
                     String pName = p.getName().toLowerCase();
                     String pDesc = p.getDescription() != null ? p.getDescription().toLowerCase() : "";
-                    String tags = p.getTags() != null ? String.join(" ", p.getTags()).toLowerCase() : "";
                     String[] words = lower.split("\\s+");
                     for (String w : words) {
-                        if (w.length() >= 3 && (pName.contains(w) || pDesc.contains(w) || tags.contains(w))) {
+                        if (w.length() >= 3 && (pName.contains(w) || pDesc.contains(w))) {
                             return true;
                         }
                     }
@@ -285,12 +321,12 @@ public class ChatbotService {
                 .toList();
 
         if (!matched.isEmpty()) {
-            StringBuilder sb = new StringBuilder("✨ **Encontré estos productos para ti:**\n\n");
+            StringBuilder sb = new StringBuilder("✨ **Encontré estos productos disponibles para ti en " + storeName + ":**\n\n");
             List<ChatResponse.ProductSummary> summaries = new ArrayList<>();
             for (Product p : matched) {
                 BigDecimal finalPrice = p.getDiscountPrice() != null ? p.getDiscountPrice() : p.getPrice();
                 sb.append("• **").append(p.getName()).append("**: $").append(formatMoney(finalPrice))
-                        .append(" COP | ").append(p.getStock() > 0 ? "✅ En Stock (" + p.getStock() + " " + p.getUnit() + ")" : "❌ Agotado")
+                        .append(" COP | ").append((p.getStock() != null && p.getStock() > 0) ? "✅ En Stock (" + p.getStock() + " " + p.getUnit() + ")" : "❌ Agotado")
                         .append("\n");
                 summaries.add(toSummary(p));
             }
@@ -298,11 +334,21 @@ public class ChatbotService {
             return new DomainProcessingResult(sb.toString(), "PRODUCT_SEARCH", summaries);
         }
 
-        // Respuesta por defecto con asistencia guiada
+        // Si el cliente preguntó por un producto que NO está en el catálogo real
+        StringBuilder notFound = new StringBuilder();
+        notFound.append("En este momento no contamos con ese producto en el inventario disponible de **").append(storeName).append("**.\n\n");
+        notFound.append("📦 **Los productos que sí tenemos disponibles hoy son:**\n");
+        
+        List<Product> sampleProducts = products.stream().limit(6).toList();
+        for (Product p : sampleProducts) {
+            BigDecimal finalPrice = p.getDiscountPrice() != null ? p.getDiscountPrice() : p.getPrice();
+            notFound.append("• **").append(p.getName()).append("**: $").append(formatMoney(finalPrice)).append(" COP\n");
+        }
+        notFound.append("\n¿Te gustaría consultar o pedir alguno de estos productos?");
+
         return new DomainProcessingResult(
-                "Entiendo tu consulta sobre *" + query + "*. En *" + storeName + "* tenemos una amplia variedad de abarrotes, lácteos, bebidas, aseo y panadería.\n\n" +
-                "💡 Puedes preguntarme por precios de productos (ej: *'precio del arroz'*, *'leche'*, *'huevos'*), el costo del domicilio, métodos de pago o promociones activas.",
-                "DEFAULT_FALLBACK",
+                notFound.toString(),
+                "PRODUCT_NOT_FOUND",
                 Collections.emptyList()
         );
     }
@@ -311,7 +357,7 @@ public class ChatbotService {
         return ChatResponse.ProductSummary.builder()
                 .id(p.getId())
                 .name(p.getName())
-                .price(p.getPrice())
+                .price(p.getDiscountPrice() != null ? p.getDiscountPrice() : p.getPrice())
                 .discountPrice(p.getDiscountPrice())
                 .stock(p.getStock())
                 .unit(p.getUnit())
@@ -320,13 +366,28 @@ public class ChatbotService {
     }
 
     private List<String> generateSuggestions(String intent, List<Product> products) {
-        return switch (intent) {
-            case "GREETING" -> List.of("🔥 Ver ofertas del día", "🥛 Consultar lácteos", "🛵 ¿Cuánto cuesta el envío?");
-            case "DELIVERY_INFO" -> List.of("💳 ¿Cómo puedo pagar?", "⏰ ¿Cuál es el horario?", "🛒 Ver catálogo completo");
-            case "PAYMENT_INFO" -> List.of("🛵 ¿Cuánto tarda el domicilio?", "📦 Pedir por WhatsApp", "🔥 Promociones de hoy");
-            case "DISCOUNTS", "PRODUCT_SEARCH" -> List.of("🛵 Pedir a domicilio", "💳 Métodos de pago", "🥚 ¿Tienen huevos?");
-            default -> List.of("🔥 Ofertas de hoy", "🥛 Precios de leche", "🛵 Costo de envío", "💳 Métodos de pago");
-        };
+        List<String> dynamicSuggestions = new ArrayList<>();
+
+        if (products != null && !products.isEmpty()) {
+            // Producto en descuento real
+            products.stream()
+                    .filter(p -> p.getDiscountPrice() != null && p.getDiscountPrice().compareTo(BigDecimal.ZERO) > 0)
+                    .findFirst()
+                    .ifPresent(p -> dynamicSuggestions.add("🔥 Oferta: " + p.getName()));
+
+            // Primeros 2 productos disponibles en stock
+            products.stream()
+                    .filter(p -> p.getStock() != null && p.getStock() > 0)
+                    .limit(2)
+                    .forEach(p -> dynamicSuggestions.add("💲 Precio de " + p.getName()));
+        }
+
+        // Sugerencias fijas del negocio
+        dynamicSuggestions.add("🛵 ¿Cuánto vale el domicilio?");
+        dynamicSuggestions.add("💳 Métodos de pago");
+        dynamicSuggestions.add("⏰ Horario de atención");
+
+        return dynamicSuggestions.stream().distinct().limit(6).toList();
     }
 
     private String formatMoney(BigDecimal amount) {

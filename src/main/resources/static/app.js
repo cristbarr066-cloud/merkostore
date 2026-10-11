@@ -2468,6 +2468,7 @@ document.addEventListener('DOMContentLoaded', () => {
         loadAdminBackendData();
     }
     initChipsSliderEvents();
+    renderChatChips(getDynamicSuggestionsFromProducts());
 });
 
 /* ==========================================================================
@@ -2529,22 +2530,47 @@ async function sendUserChatMessage() {
     try {
         let replyData = null;
 
+        // Construir catálogo y configuración activa en tiempo real
+        const payload = {
+            message: rawMessage,
+            conversationId: chatState.conversationId,
+            storeId: 'default-store',
+            storeConfig: {
+                storeName: state.storeConfig?.storeName || 'Don Pedro - Tienda de Barrio',
+                whatsappPhone: state.storeConfig?.whatsappPhone || '573001234567',
+                address: state.storeConfig?.address || 'Calle 45 # 23 - 10 Barrio El Prado',
+                deliveryFee: state.storeConfig?.deliveryFee || 3000,
+                minimumOrder: state.storeConfig?.minimumOrder || 10000,
+                isStoreOpen: state.storeConfig?.isStoreOpen !== false
+            },
+            currentCatalog: (state.products || [])
+                .filter(p => p.isAvailable !== false)
+                .map(p => ({
+                    id: p.id,
+                    name: p.name,
+                    description: p.unitCalc || p.name,
+                    price: p.price,
+                    discountPrice: p.discountPrice || null,
+                    stock: p.stock !== undefined ? p.stock : 10,
+                    category: p.categoryId,
+                    imageUrl: p.imageUrl,
+                    isAvailable: p.isAvailable !== false,
+                    unit: p.unitCalc || 'Unidad'
+                }))
+        };
+
         // Intentar llamada al backend Spring Boot
         try {
             const res = await API.request('/api/v1/public/chat', {
                 method: 'POST',
-                body: JSON.stringify({
-                    message: rawMessage,
-                    conversationId: chatState.conversationId,
-                    storeId: 'default-store'
-                })
+                body: JSON.stringify(payload)
             });
 
             if (res && res.data) {
                 replyData = res.data;
             }
         } catch (apiErr) {
-            console.warn('Backend chat no disponible, ejecutando fallback local inteligente:', apiErr);
+            console.warn('Backend chat no disponible, ejecutando motor local sincronizado:', apiErr);
             replyData = generateClientSideFallbackChat(rawMessage);
         }
 
@@ -2691,20 +2717,16 @@ function clearChatHistory() {
     const body = document.getElementById('chatbotMessagesBody');
     if (!body) return;
     chatState.conversationId = null;
+    const store = state.storeConfig || { storeName: 'Don Pedro - Tienda de Barrio' };
     body.innerHTML = `
         <div class="chat-message bot-message">
             <div class="chat-bubble">
-                👋 Conversación reiniciada. ¡Hola de nuevo! Soy <strong>MerkoBot</strong>. ¿En qué te puedo asesorar?
+                👋 Conversación reiniciada. ¡Hola de nuevo! Soy <strong>MerkoBot</strong>, tu asistente de <em>${store.storeName}</em>. ¿En qué te puedo asesorar hoy?
             </div>
             <span class="chat-time">Justo ahora</span>
         </div>
     `;
-    renderChatChips([
-        '🔥 ¿Qué ofertas y promociones hay hoy?',
-        '🥛 ¿Tienen leche y huevos disponibles?',
-        '🛵 ¿Cuánto cuesta el domicilio y cuánto tarda?',
-        '💳 ¿Cuáles son los métodos de pago?'
-    ]);
+    renderChatChips(getDynamicSuggestionsFromProducts());
 }
 
 function addChatProductToCart(productId) {
@@ -2715,53 +2737,88 @@ function addChatProductToCart(productId) {
     }
 }
 
+function getDynamicSuggestionsFromProducts() {
+    const prods = (state.products || []).filter(p => p.isAvailable !== false);
+    const chips = [];
+
+    // Sugerencia de oferta real si existe
+    const promo = prods.find(p => p.discountPrice && p.discountPrice > 0);
+    if (promo) {
+        chips.push(`🔥 Oferta: ${promo.name}`);
+    }
+
+    // Sugerencias de productos reales disponibles
+    prods.slice(0, 3).forEach(p => {
+        chips.push(`💲 Precio de ${p.name}`);
+    });
+
+    chips.push('🛵 Domicilios y envíos');
+    chips.push('💳 Métodos de pago');
+    chips.push('⏰ Horario de atención');
+
+    return chips;
+}
+
 /**
- * Fallback cliente si el backend está en modo offline temporal
+ * Fallback cliente inteligente sincronizado con el inventario real del negocio
  */
 function generateClientSideFallbackChat(query) {
     const q = query.toLowerCase();
-    const products = state.products || [];
+    const products = (state.products || []).filter(p => p.isAvailable !== false);
+    const store = state.storeConfig || { storeName: 'Don Pedro - Tienda de Barrio', deliveryFee: 3000 };
 
-    if (q.includes('domicilio') || q.includes('envio') || q.includes('envío')) {
+    if (q.includes('domicilio') || q.includes('envio') || q.includes('envío') || q.includes('tiempo')) {
         return {
-            reply: "🛵 **Domicilios Merkostore:**\n\n• **Tarifa:** $3.000 COP en el barrio.\n• **Tiempo:** 15 a 25 minutos.\n• **Envío GRATIS** en compras superiores a $30.000 COP.",
-            suggestions: ["💳 Métodos de pago", "🔥 Promociones de hoy", "🛒 Ver carrito"]
+            reply: `🛵 **Domicilios en ${store.storeName}:**\n\n• **Tarifa:** $${(store.deliveryFee || 3000).toLocaleString('es-CO')} COP en el sector.\n• **Tiempo:** 15 a 25 minutos.\n• **Envío GRATIS** en compras superiores a $30.000 COP.`,
+            suggestions: getDynamicSuggestionsFromProducts()
         };
     }
 
-    if (q.includes('pago') || q.includes('nequi') || q.includes('daviplata')) {
+    if (q.includes('pago') || q.includes('nequi') || q.includes('daviplata') || q.includes('efectivo')) {
         return {
-            reply: "💳 **Métodos de Pago:**\n\n1. **Nequi o Daviplata** directo.\n2. **Efectivo contra-entrega** al recibir tu pedido.\n3. **WhatsApp** acordado con el tendero.",
-            suggestions: ["🛵 Costo de envío", "🔥 Promociones de hoy", "🥛 Precios de leche"]
+            reply: "💳 **Métodos de Pago Disponibles:**\n\n1. **Nequi o Daviplata** directo.\n2. **Efectivo contra-entrega** al recibir tu pedido.\n3. **WhatsApp** acordado con la tienda.",
+            suggestions: getDynamicSuggestionsFromProducts()
+        };
+    }
+
+    if (q.includes('horario') || q.includes('abierto') || q.includes('hora')) {
+        return {
+            reply: `⏰ **Horario de Atención:**\n\n• Lunes a Domingo de 7:00 a.m. a 9:30 p.m. (Jornada continua).\n• Dirección: ${store.address || 'Calle 45 # 23 - 10 Barrio El Prado'}\n• Estado: 🟢 ¡Abiertos y despachando pedidos!`,
+            suggestions: getDynamicSuggestionsFromProducts()
         };
     }
 
     if (q.includes('oferta') || q.includes('promocion') || q.includes('promoción') || q.includes('descuento')) {
-        const promoList = products.filter(p => p.discountPrice && p.discountPrice > 0).slice(0, 3);
-        return {
-            reply: "🔥 **¡Promociones destacadas de hoy!** Encuentra grandes descuentos en víveres y bebidas.",
-            matchedProducts: promoList,
-            suggestions: ["🛵 ¿Cuánto vale el envío?", "💳 Métodos de pago", "🥚 ¿Tienen huevos?"]
-        };
+        const promoList = products.filter(p => p.discountPrice && p.discountPrice > 0).slice(0, 4);
+        if (promoList.length > 0) {
+            return {
+                reply: `🔥 **¡Ofertas destacadas hoy en ${store.storeName}!** Encuentra estos artículos con descuento en nuestro catálogo:`,
+                matchedProducts: promoList,
+                suggestions: getDynamicSuggestionsFromProducts()
+            };
+        }
     }
 
-    // Búsqueda por palabras
+    // Búsqueda inteligente por palabras clave en los productos REALES
     const found = products.filter(p => {
         const name = (p.name || '').toLowerCase();
-        return q.split(' ').some(w => w.length > 2 && name.includes(w));
-    }).slice(0, 3);
+        const desc = (p.unitCalc || '').toLowerCase();
+        return q.split(' ').some(w => w.length >= 3 && (name.includes(w) || desc.includes(w)));
+    }).slice(0, 4);
 
     if (found.length > 0) {
         return {
-            reply: `✨ Encontré estos productos para ti en el inventario:`,
+            reply: `✨ **Encontré estos productos para ti en el inventario de ${store.storeName}:**`,
             matchedProducts: found,
-            suggestions: ["🛵 Pedir a domicilio", "💳 ¿Cómo puedo pagar?", "🔥 Ver más ofertas"]
+            suggestions: getDynamicSuggestionsFromProducts()
         };
     }
 
+    // Si el usuario preguntó por un producto que NO está en el catálogo del negocio:
+    const sampleList = products.slice(0, 5).map(p => `• **${p.name}**: $${(p.discountPrice || p.price).toLocaleString('es-CO')}`).join('\n');
     return {
-        reply: `👋 En **Merkostore** tenemos abarrotes, lácteos, bebidas y aseo. Puedes preguntarme por precios de productos, costo de envíos o promociones.`,
-        suggestions: ["🔥 Ofertas de hoy", "🥛 Precios de lácteos", "🛵 Domicilios", "💳 Pagos"]
+        reply: `En este momento no contamos con ese producto en el inventario disponible de **${store.storeName}**.\n\n📦 **Los productos que sí tenemos disponibles hoy son:**\n${sampleList}\n\n¿Te gustaría consultar el precio o agregar alguno de estos artículos?`,
+        suggestions: getDynamicSuggestionsFromProducts()
     };
 }
 
