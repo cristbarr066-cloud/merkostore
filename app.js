@@ -886,6 +886,13 @@ function renderProducts() {
 // CART ENGINE & CHECKOUT STEP WIZARD
 let currentPaymentMethod = 'WHATSAPP';
 
+function addToCart(productId, quantity = 1) {
+    const prod = state.products.find(p => p.id === productId || String(p.id).toLowerCase() === String(productId).toLowerCase());
+    if (!prod) return;
+    const currentQty = state.cart[prod.id] || 0;
+    updateCartQuantity(prod.id, currentQty + quantity);
+}
+
 function updateCartQuantity(productId, newQty) {
     const prod = state.products.find(p => p.id === productId);
     const oldQty = state.cart[productId] || 0;
@@ -2505,6 +2512,10 @@ function handleChatKeyDown(e) {
 }
 
 function sendChatChip(chipText) {
+    if (chipText.includes('Ver Carrito') || chipText.includes('Abrir Carrito')) {
+        toggleCartDrawer();
+        return;
+    }
     const input = document.getElementById('chatbotInput');
     if (input) {
         input.value = chipText;
@@ -2526,6 +2537,46 @@ async function sendUserChatMessage() {
     appendChatMessage('user', rawMessage);
     showChatTypingIndicator();
     chatState.isProcessing = true;
+
+    // Detectar si el usuario pide explícitamente agregar un producto al carrito por mensaje
+    const lowerRaw = rawMessage.toLowerCase();
+    const isAddIntent = /(?:agrega|agregar|añade|añadir|mete|pon|llevar|quiero\s+llevar|dame|comprar|pedir|si\s*,\s*agrega)/i.test(lowerRaw);
+
+    if (isAddIntent) {
+        const matchedProd = (state.products || []).find(p => {
+            if (p.isAvailable === false) return false;
+            const pName = (p.name || '').toLowerCase();
+            const words = pName.split(/[\s,.-]+/).filter(w => w.length >= 3 && !['para', 'del', 'con', 'las', 'los', 'unds', '330ml', 'rojo', 'blanca', 'blanco', 'mezcla'].includes(w));
+            return words.some(w => lowerRaw.includes(w)) || lowerRaw.includes(pName);
+        });
+
+        if (matchedProd) {
+            let qty = 1;
+            const qtyMatch = lowerRaw.match(/(?:agrega|agregar|añade|añadir|mete|pon|llevar|dame|pedir)\s+(\d+)/i);
+            if (qtyMatch && qtyMatch[1]) {
+                const parsed = parseInt(qtyMatch[1], 10);
+                if (!isNaN(parsed) && parsed > 0) qty = parsed;
+            }
+
+            const currentQty = state.cart[matchedProd.id] || 0;
+            if (matchedProd.stock !== undefined && (currentQty + qty) > matchedProd.stock) {
+                hideChatTypingIndicator();
+                appendChatMessage('bot', `⚠️ No podemos agregar esa cantidad. El inventario máximo disponible de **${matchedProd.name}** es de **${matchedProd.stock} unidades**.`, [matchedProd]);
+                chatState.isProcessing = false;
+                return;
+            }
+
+            updateCartQuantity(matchedProd.id, currentQty + qty);
+            showToast(`🛒 ${qty > 1 ? qty + 'x ' : ''}"${matchedProd.name}" agregado al carrito desde MerkoBot`, 'success', '🤖');
+
+            hideChatTypingIndicator();
+            const totalItemsInCart = Object.values(state.cart).reduce((a, b) => a + b, 0);
+            appendChatMessage('bot', `🛒 ¡Listo! He agregado **${qty > 1 ? qty + 'x ' : ''}${matchedProd.name}** a tu carrito de compras.\n\nEn este momento tienes **${totalItemsInCart} producto(s)** en tu pedido.\n\n¿Deseas agregar algo más o quieres ver tu carrito para finalizar la orden?`, [matchedProd]);
+            renderChatChips(['🛒 Ver Carrito', '🛵 Domicilios y envíos', '💳 Métodos de pago', '🔥 Ofertas destacadas']);
+            chatState.isProcessing = false;
+            return;
+        }
+    }
 
     try {
         let replyData = null;
@@ -2619,7 +2670,7 @@ function appendChatMessage(role, text, matchedProducts = []) {
                     <div class="chat-product-name">${p.name}</div>
                     <div class="chat-product-price">$ ${(p.discountPrice || p.price || 0).toLocaleString('es-CO')} COP</div>
                 </div>
-                <button class="chat-product-btn" onclick="addChatProductToCart('${p.id}')">🛒 Agregar</button>
+                <button class="chat-product-btn" onclick="addChatProductToCart('${p.id}', this)">🛒 Agregar</button>
             </div>
         `).join('');
     }
@@ -2729,11 +2780,36 @@ function clearChatHistory() {
     renderChatChips(getDynamicSuggestionsFromProducts());
 }
 
-function addChatProductToCart(productId) {
-    const product = state.products.find(p => p.id === productId);
-    if (product) {
-        addToCart(productId);
-        showToast(`✅ "${product.name}" agregado al carrito desde MerkoBot`, 'success', '🤖');
+function addChatProductToCart(productId, btnElement) {
+    const product = state.products.find(p => p.id === productId || String(p.id).toLowerCase() === String(productId).toLowerCase());
+    if (!product) {
+        showToast('⚠️ No se encontró el producto en el catálogo activo.', 'warning', '⚠️');
+        return;
+    }
+
+    const currentQty = state.cart[product.id] || 0;
+    if (product.stock !== undefined && currentQty >= product.stock) {
+        showToast(`⚠️ Has alcanzado el inventario máximo (${product.stock} unds) de ${product.name}`, 'warning', '⚠️');
+        return;
+    }
+
+    // Agregar al carrito
+    updateCartQuantity(product.id, currentQty + 1);
+    showToast(`🛒 "${product.name}" agregado al carrito desde MerkoBot`, 'success', '🤖');
+
+    // Feedback táctil/visual inmediato en el botón
+    if (btnElement) {
+        const originalHtml = btnElement.innerHTML;
+        btnElement.innerHTML = '✅ ¡Agregado!';
+        btnElement.style.backgroundColor = '#16a34a';
+        btnElement.style.color = '#ffffff';
+        btnElement.disabled = true;
+        setTimeout(() => {
+            btnElement.innerHTML = originalHtml;
+            btnElement.style.backgroundColor = '';
+            btnElement.style.color = '';
+            btnElement.disabled = false;
+        }, 1200);
     }
 }
 
