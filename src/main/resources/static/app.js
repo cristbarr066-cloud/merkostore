@@ -2467,6 +2467,7 @@ document.addEventListener('DOMContentLoaded', () => {
         state.isAdminLoggedIn = true;
         loadAdminBackendData();
     }
+    initChipsSliderEvents();
 });
 
 /* ==========================================================================
@@ -2639,6 +2640,51 @@ function renderChatChips(suggestions) {
     container.innerHTML = suggestions.map(s => `
         <button class="chat-chip" onclick="sendChatChip('${s.replace(/'/g, "\\'")}')">${s}</button>
     `).join('');
+
+    container.scrollLeft = 0;
+}
+
+function slideChatChips(direction) {
+    const container = document.getElementById('chatbotChipsContainer');
+    if (!container) return;
+    const scrollAmount = Math.max(140, container.clientWidth * 0.7) * direction;
+    container.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+}
+
+function initChipsSliderEvents() {
+    const container = document.getElementById('chatbotChipsContainer');
+    if (!container) return;
+
+    // Rueda del ratón para desplazamiento horizontal natural
+    container.addEventListener('wheel', (e) => {
+        if (e.deltaY !== 0) {
+            e.preventDefault();
+            container.scrollLeft += e.deltaY;
+        }
+    }, { passive: false });
+
+    // Soporte para arrastrar con mouse (drag to scroll)
+    let isDown = false;
+    let startX = 0;
+    let scrollLeft = 0;
+
+    container.addEventListener('mousedown', (e) => {
+        isDown = true;
+        startX = e.pageX - container.offsetLeft;
+        scrollLeft = container.scrollLeft;
+    });
+
+    const stopDrag = () => { isDown = false; };
+    container.addEventListener('mouseleave', stopDrag);
+    container.addEventListener('mouseup', stopDrag);
+
+    container.addEventListener('mousemove', (e) => {
+        if (!isDown) return;
+        e.preventDefault();
+        const x = e.pageX - container.offsetLeft;
+        const walk = (x - startX) * 1.5;
+        container.scrollLeft = scrollLeft - walk;
+    });
 }
 
 function clearChatHistory() {
