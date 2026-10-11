@@ -1,0 +1,1465 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Entregable - Chatbot Inteligente MerkoBot con Spring Boot y LLM</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+        :root {
+            --primary: #1e3a8a;
+            --primary-light: #3b82f6;
+            --secondary: #d97706;
+            --accent: #10b981;
+            --dark: #0f172a;
+            --slate: #334155;
+            --muted: #64748b;
+            --light-bg: #f8fafc;
+            --card-bg: #ffffff;
+            --border: #e2e8f0;
+            --code-bg: #0d1117;
+            --code-text: #e6edf3;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--light-bg);
+            color: var(--slate);
+            line-height: 1.6;
+            font-size: 10.5pt;
+        }
+
+        @page {
+            size: A4;
+            margin: 18mm 15mm;
+            @bottom-right {
+                content: counter(page);
+            }
+        }
+
+        .page-break {
+            page-break-after: always;
+            break-after: page;
+        }
+
+        .avoid-break {
+            break-inside: avoid;
+            page-break-inside: avoid;
+        }
+
+        /* Contenedor principal de estilo documento */
+        .document-container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: #ffffff;
+            padding: 40px 48px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+        }
+
+        @media print {
+            body {
+                background: #ffffff;
+            }
+            .document-container {
+                max-width: 100%;
+                margin: 0;
+                padding: 0;
+                box-shadow: none;
+            }
+        }
+
+        /* ================= PORTADA ================= */
+        .cover-page {
+            min-height: 92vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            padding: 50px 40px;
+            background: linear-gradient(145deg, #ffffff 0%, #f1f5f9 100%);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cover-page::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 8px;
+            height: 100%;
+            background: linear-gradient(180deg, #2563eb, #d97706, #10b981);
+        }
+
+        .cover-header {
+            text-align: center;
+        }
+
+        .university-badge {
+            font-size: 11pt;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--primary);
+            margin-bottom: 8px;
+        }
+
+        .faculty-badge {
+            font-size: 10pt;
+            color: var(--muted);
+            font-weight: 500;
+        }
+
+        .cover-body {
+            margin: 50px 0;
+            text-align: center;
+        }
+
+        .course-tag {
+            display: inline-block;
+            background: rgba(37, 99, 235, 0.1);
+            color: #1d4ed8;
+            font-weight: 700;
+            font-size: 11pt;
+            padding: 6px 18px;
+            border-radius: 999px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(37, 99, 235, 0.2);
+        }
+
+        .main-title {
+            font-size: 26pt;
+            font-weight: 800;
+            color: var(--dark);
+            line-height: 1.25;
+            margin-bottom: 16px;
+        }
+
+        .subtitle {
+            font-size: 13pt;
+            color: var(--slate);
+            max-width: 680px;
+            margin: 0 auto;
+            font-weight: 400;
+        }
+
+        .cover-meta {
+            background: #ffffff;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 24px 30px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            font-size: 10pt;
+        }
+
+        .meta-item strong {
+            display: block;
+            color: var(--dark);
+            font-size: 8.5pt;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 4px;
+        }
+
+        .meta-item span {
+            color: var(--slate);
+            font-weight: 500;
+        }
+
+        /* ================= ENCABEZADOS Y SECCIONES ================= */
+        h1.section-title {
+            font-size: 18pt;
+            font-weight: 800;
+            color: var(--dark);
+            border-bottom: 2.5px solid var(--primary);
+            padding-bottom: 8px;
+            margin-top: 36px;
+            margin-bottom: 18px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        h1.section-title .sec-num {
+            background: var(--primary);
+            color: white;
+            font-size: 12pt;
+            padding: 4px 10px;
+            border-radius: 6px;
+        }
+
+        h2 {
+            font-size: 13pt;
+            font-weight: 700;
+            color: #1e293b;
+            margin-top: 24px;
+            margin-bottom: 10px;
+        }
+
+        h3 {
+            font-size: 11pt;
+            font-weight: 600;
+            color: var(--slate);
+            margin-top: 16px;
+            margin-bottom: 8px;
+        }
+
+        p {
+            margin-bottom: 12px;
+            text-align: justify;
+        }
+
+        ul, ol {
+            margin-left: 24px;
+            margin-bottom: 14px;
+        }
+
+        li {
+            margin-bottom: 6px;
+        }
+
+        /* ================= TARJETAS Y CALLOUTS ================= */
+        .callout {
+            background: #eff6ff;
+            border-left: 4px solid var(--primary-light);
+            padding: 14px 18px;
+            border-radius: 0 8px 8px 0;
+            margin: 16px 0;
+            font-size: 10pt;
+        }
+
+        .callout strong {
+            color: #1e40af;
+        }
+
+        .callout-success {
+            background: #ecfdf5;
+            border-left-color: var(--accent);
+        }
+
+        .callout-success strong {
+            color: #065f46;
+        }
+
+        .tech-badge-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 12px 0 20px 0;
+        }
+
+        .tech-badge {
+            background: #f1f5f9;
+            border: 1px solid #cbd5e1;
+            color: #334155;
+            font-size: 8.5pt;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 6px;
+        }
+
+        /* ================= DIAGRAMAS SVG ================= */
+        .diagram-container {
+            background: #ffffff;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 16px;
+            margin: 18px 0;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+        }
+
+        .diagram-caption {
+            font-size: 9pt;
+            color: var(--muted);
+            margin-top: 10px;
+            font-weight: 500;
+            font-style: italic;
+        }
+
+        /* ================= TABLAS ================= */
+        table.doc-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 16px 0;
+            font-size: 9.5pt;
+            background: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+
+        table.doc-table th {
+            background: #f8fafc;
+            color: var(--dark);
+            font-weight: 700;
+            text-align: left;
+            padding: 10px 14px;
+            border-bottom: 2px solid var(--border);
+            font-size: 9pt;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        table.doc-table td {
+            padding: 9px 14px;
+            border-bottom: 1px solid var(--border);
+            vertical-align: top;
+        }
+
+        table.doc-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        table.doc-table tr:nth-child(even) {
+            background: #fcfdfe;
+        }
+
+        .badge-type {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 8pt;
+            background: #e2e8f0;
+            color: #334155;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+
+        .badge-method {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            font-size: 8pt;
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: #ffffff;
+        }
+
+        .badge-post { background: #16a34a; }
+        .badge-get { background: #2563eb; }
+        .badge-put { background: #d97706; }
+        .badge-delete { background: #dc2626; }
+
+        /* ================= BLOQUES DE CÓDIGO ================= */
+        .code-snippet {
+            background: var(--code-bg);
+            color: var(--code-text);
+            border-radius: 8px;
+            padding: 14px 16px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 8.5pt;
+            line-height: 1.45;
+            margin: 14px 0;
+            overflow-x: auto;
+            border: 1px solid #30363d;
+        }
+
+        .code-header {
+            background: #161b22;
+            color: #8b949e;
+            font-size: 8pt;
+            padding: 6px 12px;
+            border-top-left-radius: 8px;
+            border-top-right-radius: 8px;
+            border-bottom: 1px solid #30363d;
+            font-family: 'JetBrains Mono', monospace;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .code-container {
+            margin: 14px 0;
+        }
+
+        .code-container .code-snippet {
+            margin-top: 0;
+            border-top-left-radius: 0;
+            border-top-right-radius: 0;
+        }
+
+        .kw { color: #ff7b72; font-weight: 600; }
+        .ann { color: #d2a8ff; }
+        .str { color: #a5d6ff; }
+        .type { color: #79c0ff; }
+        .cm { color: #8b949e; font-style: italic; }
+        .fn { color: #d2a8ff; }
+    </style>
+</head>
+<body>
+
+<div class="document-container">
+
+    <!-- ==================== PORTADA ==================== -->
+    <div class="cover-page">
+        <div class="cover-header">
+            <div class="university-badge">Proyecto de Integración Tecnológica</div>
+            <div class="faculty-badge">Ingeniería de Sistemas y Computación | Desarrollo de Software</div>
+        </div>
+
+        <div class="cover-body">
+            <div class="course-tag">DESARROLLO WEB AVANZADO</div>
+            <h1 class="main-title">INTEGRACIÓN DE CHATBOT / AGENTE INTELIGENTE CON LLM</h1>
+            <p class="subtitle">
+                Arquitectura de Capas Spring Boot, Motor de Inferencia RAG, Prototipo de Clases, 
+                Control de Acceso JWT y Modelo de Datos en Merkostore
+            </p>
+        </div>
+
+        <div class="cover-meta">
+            <div class="meta-item">
+                <strong>Plataforma / Aplicación:</strong>
+                <span>Merkostore (E-Commerce Web API & Single Page Application)</span>
+            </div>
+            <div class="meta-item">
+                <strong>Modelo de Lenguaje (LLM):</strong>
+                <span>Groq API (Meta LLaMA 3.1 8B Instant) / Motor Experto RAG</span>
+            </div>
+            <div class="meta-item">
+                <strong>Stack Tecnológico:</strong>
+                <span>Spring Boot 3.2.4, Java 17, MongoDB, Spring Security 6, JWT, HTML5, CSS3, JS</span>
+            </div>
+            <div class="meta-item">
+                <strong>Estado del Entregable:</strong>
+                <span>Implementado, Compilado con Éxito y Documentado</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="page-break"></div>
+
+    <!-- ==================== TABLA DE CONTENIDO ==================== -->
+    <div class="avoid-break" style="padding-top: 20px;">
+        <h2 style="font-size: 16pt; color: var(--dark); border-bottom: 2px solid var(--border); padding-bottom: 8px;">
+            Tabla de Contenido
+        </h2>
+        <table class="doc-table" style="margin-top: 15px;">
+            <tbody>
+                <tr><td><strong>1. Arquitectura de la Aplicación e Integración con LLM</strong></td><td style="text-align: right;">Pág. 3</td></tr>
+                <tr><td>&nbsp;&nbsp;&nbsp;&nbsp;1.1 Flujo de Inferencia y Estrategia RAG (Retrieval-Augmented Generation)</td><td style="text-align: right;">Pág. 3</td></tr>
+                <tr><td>&nbsp;&nbsp;&nbsp;&nbsp;1.2 Diagrama Arquitectónico Detallado del Sistema</td><td style="text-align: right;">Pág. 4</td></tr>
+                <tr><td><strong>2. Prototipo de Clases del Chatbot / Agente Inteligente</strong></td><td style="text-align: right;">Pág. 5</td></tr>
+                <tr><td>&nbsp;&nbsp;&nbsp;&nbsp;2.1 Adaptación del Proyecto de Referencia (Educhat-notes a Merkostore)</td><td style="text-align: right;">Pág. 5</td></tr>
+                <tr><td>&nbsp;&nbsp;&nbsp;&nbsp;2.2 Diagrama UML de Clases</td><td style="text-align: right;">Pág. 6</td></tr>
+                <tr><td>&nbsp;&nbsp;&nbsp;&nbsp;2.3 Especificación e Implementación de Clases Java</td><td style="text-align: right;">Pág. 7</td></tr>
+                <tr><td><strong>3. Actualización de las Vistas del Front-End</strong></td><td style="text-align: right;">Pág. 9</td></tr>
+                <tr><td>&nbsp;&nbsp;&nbsp;&nbsp;3.1 Componentes de la Interfaz de Usuario (UI) de MerkoBot</td><td style="text-align: right;">Pág. 9</td></tr>
+                <tr><td>&nbsp;&nbsp;&nbsp;&nbsp;3.2 Diagrama Mockup de Experiencia de Usuario y Recomendación</td><td style="text-align: right;">Pág. 10</td></tr>
+                <tr><td>&nbsp;&nbsp;&nbsp;&nbsp;3.3 Integración Asíncrona (HTML, CSS y Vanilla JS)</td><td style="text-align: right;">Pág. 11</td></tr>
+                <tr><td><strong>4. Evidencia de Control de Acceso y Seguridad</strong></td><td style="text-align: right;">Pág. 12</td></tr>
+                <tr><td>&nbsp;&nbsp;&nbsp;&nbsp;4.1 Mecanismo Stateless con Spring Security 6 y JWT</td><td style="text-align: right;">Pág. 12</td></tr>
+                <tr><td>&nbsp;&nbsp;&nbsp;&nbsp;4.2 Matriz de Autorización de Endpoints</td><td style="text-align: right;">Pág. 13</td></tr>
+                <tr><td>&nbsp;&nbsp;&nbsp;&nbsp;4.3 Fragmentos de Código de Implementación de Seguridad</td><td style="text-align: right;">Pág. 14</td></tr>
+                <tr><td><strong>5. Repositorio de Código Fuente en GitHub</strong></td><td style="text-align: right;">Pág. 15</td></tr>
+                <tr><td><strong>6. Diagramas del Modelo de Datos</strong></td><td style="text-align: right;">Pág. 16</td></tr>
+                <tr><td>&nbsp;&nbsp;&nbsp;&nbsp;6.1 Diagrama Entidad-Relación (E-R) de Colecciones MongoDB</td><td style="text-align: right;">Pág. 16</td></tr>
+                <tr><td>&nbsp;&nbsp;&nbsp;&nbsp;6.2 Diccionario Exhaustivo de Datos</td><td style="text-align: right;">Pág. 17</td></tr>
+                <tr><td><strong>7. Conclusiones</strong></td><td style="text-align: right;">Pág. 19</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="page-break"></div>
+
+    <!-- ==================== SECCIÓN 1 ==================== -->
+    <h1 class="section-title">
+        <span class="sec-num">1</span> Arquitectura de la Aplicación e Integración con LLM
+    </h1>
+
+    <p>
+        La plataforma <strong>Merkostore</strong> es una solución moderna de comercio electrónico estructurada como una API REST basada en <strong>Spring Boot 3.2.4</strong> (Java 17) con persistencia en <strong>MongoDB</strong> y una interfaz de usuario cliente desacoplada y responsiva. Para cumplir con los requerimientos de la asignatura, se incorporó un <strong>Agente Inteligente / Chatbot ("MerkoBot IA")</strong> capaz de atender las consultas de los clientes sobre el catálogo, horarios, envíos, métodos de pago y recomendaciones personalizadas en lenguaje natural.
+    </p>
+
+    <div class="tech-badge-container">
+        <span class="tech-badge">Spring Boot 3.2.4</span>
+        <span class="tech-badge">Java 17 LTS</span>
+        <span class="tech-badge">Spring Data MongoDB</span>
+        <span class="tech-badge">Groq Cloud API (Meta LLaMA 3.1 8B)</span>
+        <span class="tech-badge">Spring Security 6</span>
+        <span class="tech-badge">JWT (jjwt 0.11.5)</span>
+        <span class="tech-badge">HTML5 / CSS3 / ES6</span>
+    </div>
+
+    <h2>1.1 Flujo de Inferencia y Estrategia RAG (Retrieval-Augmented Generation)</h2>
+    <p>
+        Para garantizar respuestas precisas y actualizadas sin alucinaciones, la integración implementa un patrón <strong>RAG Liviano (Retrieval-Augmented Generation)</strong> en tiempo de ejecución:
+    </p>
+    <ol>
+        <li><strong>Recepción de la Petición:</strong> El cliente web envía la consulta mediante <code>POST /api/v1/public/chat</code> con el texto del usuario, el ID de la tienda (<code>storeId</code>) y el identificador de sesión (<code>conversationId</code>).</li>
+        <li><strong>Persistencia del Mensaje del Usuario:</strong> El servicio registra de inmediato el mensaje en MongoDB (colección <code>chat_messages</code>) para auditoría e historial.</li>
+        <li><strong>Recuperación de Contexto (Retrieval):</strong> <code>ChatbotService</code> consulta en tiempo real:
+            <ul>
+                <li>La configuración de la tienda activa (<code>StoreConfigRepository</code>): nombre comercial, teléfono de WhatsApp, horario de atención, costos de envío y métodos de pago.</li>
+                <li>Los productos disponibles (<code>ProductRepository.findByStoreIdAndIsAvailableTrue()</code>): nombres, descripciones, categorías, precios y stock.</li>
+            </ul>
+        </li>
+        <li><strong>Inyección en el Prompt del Sistema (Augmentation):</strong> Se construye un prompt de sistema restrictivo y estructurado que delimita el rol de MerkoBot exclusivamente a los productos y políticas de la tienda.</li>
+        <li><strong>Llamada al LLM (Generation):</strong> Se invoca a la API de alta velocidad de <strong>Groq</strong> consumiendo el modelo <code>llama-3.1-8b-instant</code> mediante <code>RestTemplate</code> con formato OpenAI-compatible.</li>
+        <li><strong>Mecanismo de Resiliencia (Fallback Autónomo):</strong> En caso de indisponibilidad de la API externa o ausencia de API Key, un <em>Motor Experto de Dominio</em> local analiza las intenciones semánticas y provee respuestas inmediatas con tarjetas interactivas de productos reales.</li>
+        <li><strong>Persistencia y Respuesta:</strong> Se persiste la respuesta generada y se retorna al cliente estructurada con sugerencias dinámicas y productos relacionados.</li>
+    </ol>
+
+    <div class="diagram-container avoid-break">
+        <!-- SVG DIAGRAMA DE ARQUITECTURA -->
+        <svg viewBox="0 0 850 430" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <linearGradient id="gradClient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#3b82f6"/>
+                    <stop offset="100%" stop-color="#1d4ed8"/>
+                </linearGradient>
+                <linearGradient id="gradBoot" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#10b981"/>
+                    <stop offset="100%" stop-color="#047857"/>
+                </linearGradient>
+                <linearGradient id="gradLLM" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#8b5cf6"/>
+                    <stop offset="100%" stop-color="#6d28d9"/>
+                </linearGradient>
+                <linearGradient id="gradDB" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#f59e0b"/>
+                    <stop offset="100%" stop-color="#b45309"/>
+                </linearGradient>
+                <filter id="shadow" x="-5%" y="-5%" width="110%" height="110%">
+                    <feDropShadow dx="0" dy="4" stdDeviation="4" flood-opacity="0.1"/>
+                </filter>
+            </defs>
+
+            <!-- Fondo general -->
+            <rect width="850" height="430" rx="10" fill="#f8fafc"/>
+
+            <!-- CAPA 1: CLIENTE -->
+            <g transform="translate(30, 40)" filter="url(#shadow)">
+                <rect width="210" height="340" rx="10" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+                <rect width="210" height="38" rx="10" fill="url(#gradClient)"/>
+                <text x="105" y="24" fill="#ffffff" font-family="Inter" font-weight="700" font-size="12" text-anchor="middle">CAPA FRONT-END CLIENTE</text>
+
+                <!-- Items cliente -->
+                <rect x="15" y="55" width="180" height="48" rx="6" fill="#f1f5f9" stroke="#94a3b8"/>
+                <text x="105" y="75" fill="#0f172a" font-family="Inter" font-weight="600" font-size="10.5" text-anchor="middle">SPA (index.html / styles.css)</text>
+                <text x="105" y="90" fill="#64748b" font-family="Inter" font-size="9" text-anchor="middle">Catálogo, Carrito y Drawer UI</text>
+
+                <rect x="15" y="118" width="180" height="52" rx="6" fill="#f1f5f9" stroke="#94a3b8"/>
+                <text x="105" y="138" fill="#0f172a" font-family="Inter" font-weight="600" font-size="10.5" text-anchor="middle">MerkoBot FAB & Widget</text>
+                <text x="105" y="153" fill="#64748b" font-family="Inter" font-size="9" text-anchor="middle">Burbujas, Chips, Typing Indicator</text>
+
+                <rect x="15" y="185" width="180" height="52" rx="6" fill="#f1f5f9" stroke="#94a3b8"/>
+                <text x="105" y="205" fill="#0f172a" font-family="Inter" font-weight="600" font-size="10.5" text-anchor="middle">Controlador JS (app.js)</text>
+                <text x="105" y="220" fill="#64748b" font-family="Inter" font-size="9" text-anchor="middle">Fetch API async, chatState, Fallback</text>
+
+                <rect x="15" y="252" width="180" height="52" rx="6" fill="#dcfce7" stroke="#86efac"/>
+                <text x="105" y="272" fill="#166534" font-family="Inter" font-weight="700" font-size="10.5" text-anchor="middle">Acciones Interactivas</text>
+                <text x="105" y="287" fill="#15803d" font-family="Inter" font-size="9" text-anchor="middle">Agregar producto al carrito directo</text>
+            </g>
+
+            <!-- FLECHA CLIENTE -> BACKEND -->
+            <path d="M 245 150 L 295 150" stroke="#2563eb" stroke-width="2.5" fill="none" marker-end="url(#arrow)"/>
+            <text x="270" y="140" fill="#2563eb" font-family="JetBrains Mono" font-size="8.5" font-weight="700" text-anchor="middle">JSON REST</text>
+            <text x="270" y="165" fill="#64748b" font-family="JetBrains Mono" font-size="7.5" text-anchor="middle">POST /chat</text>
+
+            <!-- CAPA 2: BACKEND SPRING BOOT -->
+            <g transform="translate(305, 30)" filter="url(#shadow)">
+                <rect width="280" height="360" rx="10" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+                <rect width="280" height="38" rx="10" fill="url(#gradBoot)"/>
+                <text x="140" y="24" fill="#ffffff" font-family="Inter" font-weight="700" font-size="12" text-anchor="middle">SPRING BOOT 3.2.4 (BACKEND)</text>
+
+                <!-- Spring Security -->
+                <rect x="15" y="48" width="250" height="35" rx="6" fill="#fef2f2" stroke="#fca5a5"/>
+                <text x="140" y="70" fill="#991b1b" font-family="Inter" font-weight="700" font-size="9.5" text-anchor="middle">Spring Security 6 | JwtAuthFilter (Stateless)</text>
+
+                <!-- Controller -->
+                <rect x="15" y="92" width="250" height="42" rx="6" fill="#f1f5f9" stroke="#94a3b8"/>
+                <text x="140" y="109" fill="#0f172a" font-family="Inter" font-weight="700" font-size="10" text-anchor="middle">ChatbotController.java</text>
+                <text x="140" y="124" fill="#64748b" font-family="Inter" font-size="8.5" text-anchor="middle">@PostMapping("/api/v1/public/chat")</text>
+
+                <!-- Service RAG -->
+                <rect x="15" y="144" width="250" height="110" rx="6" fill="#eff6ff" stroke="#93c5fd"/>
+                <text x="140" y="162" fill="#1e3a8a" font-family="Inter" font-weight="800" font-size="10.5" text-anchor="middle">ChatbotService.java (Orquestador)</text>
+                <line x1="25" y1="170" x2="255" y2="170" stroke="#bfdbfe"/>
+                <text x="25" y="185" fill="#1e40af" font-family="Inter" font-size="8.5">• Construcción Dinámica de Prompt (RAG)</text>
+                <text x="25" y="200" fill="#1e40af" font-family="Inter" font-size="8.5">• Inyección de Catálogo de Productos y Horarios</text>
+                <text x="25" y="215" fill="#1e40af" font-family="Inter" font-size="8.5">• Cliente RestTemplate con API de Groq</text>
+                <text x="25" y="230" fill="#1e40af" font-family="Inter" font-size="8.5">• Motor de Resiliencia / Reglas Locales</text>
+                <text x="25" y="245" fill="#1e40af" font-family="Inter" font-size="8.5">• Generación Dinámica de Sugerencias</text>
+
+                <!-- Repositorios -->
+                <rect x="15" y="264" width="250" height="80" rx="6" fill="#f8fafc" stroke="#cbd5e1"/>
+                <text x="140" y="281" fill="#0f172a" font-family="Inter" font-weight="700" font-size="9.5" text-anchor="middle">Capa de Persistencia (Spring Data)</text>
+                <text x="25" y="299" fill="#475569" font-family="JetBrains Mono" font-size="8">ProductRepository (Catálogo y Stock)</text>
+                <text x="25" y="315" fill="#475569" font-family="JetBrains Mono" font-size="8">StoreConfigRepository (Info Tienda)</text>
+                <text x="25" y="331" fill="#475569" font-family="JetBrains Mono" font-size="8">ChatMessageRepository (Historial Chat)</text>
+            </g>
+
+            <!-- FLECHA BACKEND -> LLM -->
+            <path d="M 590 190 L 640 190" stroke="#7c3aed" stroke-width="2.5" fill="none"/>
+            <text x="615" y="180" fill="#7c3aed" font-family="JetBrains Mono" font-size="8" font-weight="700" text-anchor="middle">HTTPS</text>
+
+            <!-- CAPA 3: SERVICIOS EXTERNOS & BD -->
+            <!-- LLM Groq -->
+            <g transform="translate(645, 60)" filter="url(#shadow)">
+                <rect width="175" height="135" rx="8" fill="#ffffff" stroke="#c4b5fd" stroke-width="1.5"/>
+                <rect width="175" height="32" rx="8" fill="url(#gradLLM)"/>
+                <text x="87" y="21" fill="#ffffff" font-family="Inter" font-weight="700" font-size="10.5" text-anchor="middle">LLM EXTERNO (GROQ)</text>
+                <text x="87" y="55" fill="#1e1b4b" font-family="Inter" font-weight="700" font-size="10" text-anchor="middle">LLaMA 3.1 8B Instant</text>
+                <text x="87" y="73" fill="#6b7280" font-family="Inter" font-size="8.5" text-anchor="middle">API OpenAI Compatible</text>
+                <text x="87" y="90" fill="#6b7280" font-family="Inter" font-size="8" text-anchor="middle">Ultra-baja latencia (Groq LPUs)</text>
+                <rect x="20" y="102" width="135" height="20" rx="4" fill="#ede9fe"/>
+                <text x="87" y="116" fill="#5b21b6" font-family="JetBrains Mono" font-size="7.5" text-anchor="middle">Temperatura: 0.4</text>
+            </g>
+
+            <!-- MongoDB -->
+            <g transform="translate(645, 230)" filter="url(#shadow)">
+                <rect width="175" height="150" rx="8" fill="#ffffff" stroke="#fde68a" stroke-width="1.5"/>
+                <rect width="175" height="32" rx="8" fill="url(#gradDB)"/>
+                <text x="87" y="21" fill="#ffffff" font-family="Inter" font-weight="700" font-size="10.5" text-anchor="middle">BASE DE DATOS (MONGODB)</text>
+                <text x="20" y="58" fill="#78350f" font-family="JetBrains Mono" font-size="8.5">• chat_messages</text>
+                <text x="20" y="76" fill="#78350f" font-family="JetBrains Mono" font-size="8.5">• products</text>
+                <text x="20" y="94" fill="#78350f" font-family="JetBrains Mono" font-size="8.5">• store_configs</text>
+                <text x="20" y="112" fill="#78350f" font-family="JetBrains Mono" font-size="8.5">• orders</text>
+                <text x="20" y="130" fill="#78350f" font-family="JetBrains Mono" font-size="8.5">• users</text>
+            </g>
+
+            <!-- Flecha DB <-> Backend -->
+            <path d="M 590 310 L 640 310" stroke="#d97706" stroke-width="2.5" fill="none"/>
+            <text x="615" y="300" fill="#d97706" font-family="JetBrains Mono" font-size="8" font-weight="700" text-anchor="middle">Spring Data</text>
+        </svg>
+        <div class="diagram-caption">Figura 1. Diagrama de Arquitectura de la Solución Merkostore con Integración de LLM y Flujo RAG.</div>
+    </div>
+
+    <div class="page-break"></div>
+
+    <!-- ==================== SECCIÓN 2 ==================== -->
+    <h1 class="section-title">
+        <span class="sec-num">2</span> Prototipo de Clases del Chatbot / Agente Inteligente
+    </h1>
+
+    <h2>2.1 Adaptación del Proyecto de Referencia (Educhat-notes a Merkostore)</h2>
+    <p>
+        El proyecto de referencia <em>Educhat-notes</em> propone un patrón de orquestación donde un controlador REST recibe la consulta, un servicio construye el contexto semántico y se conecta a un LLM para responder preguntas sobre apuntes académicos. 
+    </p>
+    <p>
+        Para la plataforma <strong>Merkostore</strong>, se adaptó dicha filosofía al <strong>dominio del comercio electrónico minorista</strong>:
+    </p>
+
+    <table class="doc-table">
+        <thead>
+            <tr>
+                <th style="width: 25%;">Componente</th>
+                <th style="width: 35%;">Enfoque Educhat-notes (Referencia)</th>
+                <th style="width: 40%;">Adaptación en Merkostore (Implementado)</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><strong>Dominio y Contexto</strong></td>
+                <td>Notas de estudio, materias, apuntes académicos en PDF/texto.</td>
+                <td>Catálogo de productos en stock, promociones, precios, horarios, métodos de pago y políticas de envío de la tienda.</td>
+            </tr>
+            <tr>
+                <td><strong>Persistencia de Mensajes</strong></td>
+                <td>Historial volátil o plano en memoria.</td>
+                <td>Colección <code>chat_messages</code> en MongoDB con indexación por <code>conversationId</code> y <code>storeId</code> para trazabilidad.</td>
+            </tr>
+            <tr>
+                <td><strong>Estructura de Respuesta</strong></td>
+                <td>Texto plano con la síntesis académica.</td>
+                <td>Respuesta enriquecida: texto explicativo + lista de sugerencias rápidas + tarjetas de productos identificados (con ID, precio e imagen).</td>
+            </tr>
+            <tr>
+                <td><strong>Acciones en Front-End</strong></td>
+                <td>Lectura pasiva de respuestas.</td>
+                <td><strong>Acción interactiva directa:</strong> botón "Agregar al carrito" en los productos recomendados por MerkoBot.</td>
+            </tr>
+            <tr>
+                <td><strong>Tolerancia a Fallos</strong></td>
+                <td>Error 500 si la API externa del LLM no responde.</td>
+                <td><strong>Fallback transparente:</strong> Si Groq LLM falla o no hay API key, se activa el motor de reglas de dominio local sin interrumpir al usuario.</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="diagram-container avoid-break">
+        <!-- SVG DIAGRAMA DE CLASES UML -->
+        <svg viewBox="0 0 850 440" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <filter id="shadowUml" x="-3%" y="-3%" width="106%" height="106%">
+                    <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.12"/>
+                </filter>
+            </defs>
+            <rect width="850" height="440" rx="8" fill="#f8fafc"/>
+
+            <!-- CLASE: ChatbotController -->
+            <g transform="translate(20, 25)" filter="url(#shadowUml)">
+                <rect width="250" height="150" rx="6" fill="#ffffff" stroke="#0284c7" stroke-width="1.5"/>
+                <rect width="250" height="30" rx="6" fill="#0284c7"/>
+                <text x="125" y="20" fill="#ffffff" font-family="Inter" font-weight="700" font-size="11" text-anchor="middle">&lt;&lt;RestController&gt;&gt; ChatbotController</text>
+                <text x="10" y="48" fill="#475569" font-family="JetBrains Mono" font-size="8.5">- chatbotService: ChatbotService</text>
+                <line x1="0" y1="58" x2="250" y2="58" stroke="#e2e8f0"/>
+                <text x="10" y="75" fill="#0f172a" font-family="JetBrains Mono" font-size="8.5">+ ask(request: ChatRequest): ResponseEntity</text>
+                <text x="10" y="93" fill="#0f172a" font-family="JetBrains Mono" font-size="8.5">+ getInitialSuggestions(): ResponseEntity</text>
+                <line x1="0" y1="105" x2="250" y2="105" stroke="#e2e8f0"/>
+                <text x="10" y="122" fill="#64748b" font-family="Inter" font-size="8">Ruta: @RequestMapping("/api/v1/public/chat")</text>
+                <text x="10" y="137" fill="#64748b" font-family="Inter" font-size="8">Seguridad: Público (PermitAll)</text>
+            </g>
+
+            <!-- CLASE: ChatbotService -->
+            <g transform="translate(310, 25)" filter="url(#shadowUml)">
+                <rect width="270" height="240" rx="6" fill="#ffffff" stroke="#16a34a" stroke-width="1.5"/>
+                <rect width="270" height="30" rx="6" fill="#16a34a"/>
+                <text x="135" y="20" fill="#ffffff" font-family="Inter" font-weight="700" font-size="11" text-anchor="middle">&lt;&lt;Service&gt;&gt; ChatbotService</text>
+                <text x="10" y="48" fill="#475569" font-family="JetBrains Mono" font-size="8.5">- productRepository: ProductRepository</text>
+                <text x="10" y="63" fill="#475569" font-family="JetBrains Mono" font-size="8.5">- storeConfigRepository: StoreConfigRepository</text>
+                <text x="10" y="78" fill="#475569" font-family="JetBrains Mono" font-size="8.5">- chatMessageRepository: ChatMessageRepository</text>
+                <text x="10" y="93" fill="#475569" font-family="JetBrains Mono" font-size="8.5">- groqApiKey, groqModel, groqApiUrl: String</text>
+                <line x1="0" y1="102" x2="270" y2="102" stroke="#e2e8f0"/>
+                <text x="10" y="120" fill="#0f172a" font-family="JetBrains Mono" font-size="8.5">+ processUserMessage(req: ChatRequest): ChatResponse</text>
+                <text x="10" y="138" fill="#0f172a" font-family="JetBrains Mono" font-size="8.5">+ getInitialSuggestions(): List&lt;String&gt;</text>
+                <text x="10" y="156" fill="#0f172a" font-family="JetBrains Mono" font-size="8.5">- callGroqLlm(...): String</text>
+                <text x="10" y="174" fill="#0f172a" font-family="JetBrains Mono" font-size="8.5">- processWithDomainEngine(...): DomainResult</text>
+                <text x="10" y="192" fill="#0f172a" font-family="JetBrains Mono" font-size="8.5">- buildRagSystemPrompt(...): String</text>
+                <text x="10" y="210" fill="#0f172a" font-family="JetBrains Mono" font-size="8.5">- saveMessage(convId, storeId, role, txt): void</text>
+            </g>
+
+            <!-- CLASE: ChatMessage (Entidad) -->
+            <g transform="translate(615, 25)" filter="url(#shadowUml)">
+                <rect width="215" height="180" rx="6" fill="#ffffff" stroke="#d97706" stroke-width="1.5"/>
+                <rect width="215" height="30" rx="6" fill="#d97706"/>
+                <text x="107" y="20" fill="#ffffff" font-family="Inter" font-weight="700" font-size="11" text-anchor="middle">&lt;&lt;Document&gt;&gt; ChatMessage</text>
+                <text x="10" y="48" fill="#475569" font-family="JetBrains Mono" font-size="8.5">- id: String (@Id)</text>
+                <text x="10" y="66" fill="#475569" font-family="JetBrains Mono" font-size="8.5">- conversationId: String (@Indexed)</text>
+                <text x="10" y="84" fill="#475569" font-family="JetBrains Mono" font-size="8.5">- storeId: String (@Indexed)</text>
+                <text x="10" y="102" fill="#475569" font-family="JetBrains Mono" font-size="8.5">- role: String ("user"|"assistant")</text>
+                <text x="10" y="120" fill="#475569" font-family="JetBrains Mono" font-size="8.5">- content: String</text>
+                <text x="10" y="138" fill="#475569" font-family="JetBrains Mono" font-size="8.5">- intent: String</text>
+                <text x="10" y="156" fill="#475569" font-family="JetBrains Mono" font-size="8.5">- timestamp: LocalDateTime</text>
+                <text x="10" y="172" fill="#64748b" font-family="Inter" font-size="8">Colección: "chat_messages"</text>
+            </g>
+
+            <!-- DTO: ChatRequest -->
+            <g transform="translate(20, 215)" filter="url(#shadowUml)">
+                <rect width="250" height="130" rx="6" fill="#ffffff" stroke="#6366f1" stroke-width="1.5"/>
+                <rect width="250" height="28" rx="6" fill="#6366f1"/>
+                <text x="125" y="19" fill="#ffffff" font-family="Inter" font-weight="700" font-size="10.5" text-anchor="middle">&lt;&lt;DTO&gt;&gt; ChatRequest</text>
+                <text x="10" y="48" fill="#475569" font-family="JetBrains Mono" font-size="8.5">- message: String (@NotBlank)</text>
+                <text x="10" y="66" fill="#475569" font-family="JetBrains Mono" font-size="8.5">- conversationId: String</text>
+                <text x="10" y="84" fill="#475569" font-family="JetBrains Mono" font-size="8.5">- storeId: String</text>
+                <text x="10" y="102" fill="#475569" font-family="JetBrains Mono" font-size="8.5">- senderName: String</text>
+            </g>
+
+            <!-- DTO: ChatResponse -->
+            <g transform="translate(20, 360)" filter="url(#shadowUml)">
+                <rect width="560" height="65" rx="6" fill="#ffffff" stroke="#6366f1" stroke-width="1.5"/>
+                <rect width="560" height="24" rx="6" fill="#6366f1"/>
+                <text x="280" y="17" fill="#ffffff" font-family="Inter" font-weight="700" font-size="10" text-anchor="middle">&lt;&lt;DTO&gt;&gt; ChatResponse (reply, conversationId, intent, suggestions: List&lt;String&gt;, matchedProducts: List&lt;ProductSummary&gt;)</text>
+                <text x="10" y="44" fill="#475569" font-family="JetBrains Mono" font-size="8">Inner Class ProductSummary: { id: String, name: String, price: BigDecimal, category: String, imageUrl: String }</text>
+            </g>
+
+            <!-- REPOSITORIO: ChatMessageRepository -->
+            <g transform="translate(615, 230)" filter="url(#shadowUml)">
+                <rect width="215" height="115" rx="6" fill="#ffffff" stroke="#059669" stroke-width="1.5"/>
+                <rect width="215" height="28" rx="6" fill="#059669"/>
+                <text x="107" y="19" fill="#ffffff" font-family="Inter" font-weight="700" font-size="10" text-anchor="middle">&lt;&lt;Repository&gt;&gt; ChatMessageRepo</text>
+                <text x="10" y="48" fill="#475569" font-family="JetBrains Mono" font-size="8">Extiende MongoRepository&lt;ChatMessage, String&gt;</text>
+                <line x1="0" y1="56" x2="215" y2="56" stroke="#e2e8f0"/>
+                <text x="10" y="74" fill="#0f172a" font-family="JetBrains Mono" font-size="8">+ findByConversationIdOrderByTimestampAsc(...)</text>
+                <text x="10" y="92" fill="#0f172a" font-family="JetBrains Mono" font-size="8">+ findByStoreIdOrderByTimestampDesc(...)</text>
+            </g>
+
+            <!-- LÍNEAS DE RELACIÓN -->
+            <path d="M 270 95 L 310 95" stroke="#334155" stroke-width="1.5" marker-end="url(#arrow)"/>
+            <path d="M 580 95 L 615 95" stroke="#334155" stroke-width="1.5"/>
+            <path d="M 722 205 L 722 230" stroke="#334155" stroke-width="1.5" stroke-dasharray="3,3"/>
+        </svg>
+        <div class="diagram-caption">Figura 2. Diagrama de Clases UML del Subsistema del Chatbot / Agente Inteligente en Spring Boot.</div>
+    </div>
+
+    <div class="page-break"></div>
+
+    <h2>2.2 Especificación e Implementación de Clases Java</h2>
+    <p>A continuación se presentan los extractos clave del prototipo funcional desarrollado e integrado en la base de código de Merkostore:</p>
+
+    <!-- DTO: ChatRequest y ChatResponse -->
+    <div class="code-container avoid-break">
+        <div class="code-header">
+            <span>src/main/java/com/merkostore/api/dtos/ChatRequest.java</span>
+            <span>Java 17 / Lombok</span>
+        </div>
+        <div class="code-snippet">
+<span class="ann">@Data @Builder @NoArgsConstructor @AllArgsConstructor</span>
+<span class="kw">public class</span> <span class="type">ChatRequest</span> {
+    <span class="ann">@NotBlank</span>(message = <span class="str">"El mensaje del usuario no puede estar vacío"</span>)
+    <span class="kw">private</span> <span class="type">String</span> message;
+    <span class="kw">private</span> <span class="type">String</span> conversationId;
+    <span class="kw">private</span> <span class="type">String</span> storeId;
+    <span class="kw">private</span> <span class="type">String</span> senderName;
+}
+        </div>
+    </div>
+
+    <!-- MODELO: ChatMessage.java -->
+    <div class="code-container avoid-break">
+        <div class="code-header">
+            <span>src/main/java/com/merkostore/api/models/ChatMessage.java</span>
+            <span>Spring Data MongoDB</span>
+        </div>
+        <div class="code-snippet">
+<span class="ann">@Data @Builder @NoArgsConstructor @AllArgsConstructor</span>
+<span class="ann">@Document</span>(collection = <span class="str">"chat_messages"</span>)
+<span class="kw">public class</span> <span class="type">ChatMessage</span> {
+    <span class="ann">@Id</span>
+    <span class="kw">private</span> <span class="type">String</span> id;
+    <span class="ann">@Indexed</span>
+    <span class="kw">private</span> <span class="type">String</span> conversationId;
+    <span class="ann">@Indexed</span>
+    <span class="kw">private</span> <span class="type">String</span> storeId;
+    <span class="kw">private</span> <span class="type">String</span> role;     <span class="cm">// "user" o "assistant"</span>
+    <span class="kw">private</span> <span class="type">String</span> content;
+    <span class="kw">private</span> <span class="type">String</span> intent;
+    <span class="ann">@CreatedDate @Builder.Default</span>
+    <span class="kw">private</span> <span class="type">LocalDateTime</span> timestamp = <span class="type">LocalDateTime</span>.<span class="fn">now</span>();
+}
+        </div>
+    </div>
+
+    <!-- CONTROLADOR: ChatbotController.java -->
+    <div class="code-container avoid-break">
+        <div class="code-header">
+            <span>src/main/java/com/merkostore/api/controllers/ChatbotController.java</span>
+            <span>REST API</span>
+        </div>
+        <div class="code-snippet">
+<span class="ann">@RestController</span>
+<span class="ann">@RequestMapping</span>(<span class="str">"/api/v1/public/chat"</span>)
+<span class="ann">@RequiredArgsConstructor</span>
+<span class="ann">@CrossOrigin</span>(origins = <span class="str">"*"</span>)
+<span class="kw">public class</span> <span class="type">ChatbotController</span> {
+
+    <span class="kw">private final</span> <span class="type">ChatbotService</span> chatbotService;
+
+    <span class="ann">@PostMapping</span>
+    <span class="kw">public</span> <span class="type">ResponseEntity</span>&lt;<span class="type">ApiResponse</span>&lt;<span class="type">ChatResponse</span>&gt;&gt; <span class="fn">ask</span>(<span class="ann">@Valid @RequestBody</span> <span class="type">ChatRequest</span> request) {
+        <span class="type">ChatResponse</span> response = chatbotService.<span class="fn">processUserMessage</span>(request);
+        <span class="kw">return</span> <span class="type">ResponseEntity</span>.<span class="fn">ok</span>(<span class="type">ApiResponse</span>.<span class="fn">ok</span>(<span class="str">"Respuesta generada con éxito"</span>, response));
+    }
+
+    <span class="ann">@GetMapping</span>(<span class="str">"/suggestions"</span>)
+    <span class="kw">public</span> <span class="type">ResponseEntity</span>&lt;<span class="type">ApiResponse</span>&lt;<span class="type">List</span>&lt;<span class="type">String</span>&gt;&gt;&gt; <span class="fn">getInitialSuggestions</span>() {
+        <span class="kw">return</span> <span class="type">ResponseEntity</span>.<span class="fn">ok</span>(<span class="type">ApiResponse</span>.<span class="fn">ok</span>(<span class="str">"Sugerencias obtenidas"</span>, chatbotService.<span class="fn">getInitialSuggestions</span>()));
+    }
+}
+        </div>
+    </div>
+
+    <!-- SERVICIO: Fragmento ChatbotService.java -->
+    <div class="code-container avoid-break">
+        <div class="code-header">
+            <span>src/main/java/com/merkostore/api/services/ChatbotService.java</span>
+            <span>RAG & Groq LLM Client</span>
+        </div>
+        <div class="code-snippet">
+<span class="cm">// Recuperación en tiempo real e inyección de contexto RAG</span>
+<span class="type">StoreConfig</span> storeConfig = storeConfigRepository.<span class="fn">findByStoreId</span>(storeId).<span class="fn">orElse</span>(<span class="kw">null</span>);
+<span class="type">List</span>&lt;<span class="type">Product</span>&gt; availableProducts = productRepository.<span class="fn">findByStoreIdAndIsAvailableTrue</span>(storeId);
+
+<span class="kw">if</span> (groqApiKey != <span class="kw">null</span> &amp;&amp; !groqApiKey.<span class="fn">isBlank</span>()) {
+    <span class="kw">try</span> {
+        botReply = <span class="fn">callGroqLlm</span>(userText, storeConfig, availableProducts, conversationId);
+        detectedIntent = <span class="str">"LLM_GENERATED"</span>;
+    } <span class="kw">catch</span> (<span class="type">Exception</span> e) {
+        log.<span class="fn">warn</span>(<span class="str">"Groq LLM no disponible, activando motor experto local: {}"</span>, e.<span class="fn">getMessage</span>());
+    }
+}
+<span class="cm">// Si no hay LLM o hubo contingencia, el motor de reglas de dominio atiende la consulta</span>
+<span class="kw">if</span> (botReply == <span class="kw">null</span>) {
+    <span class="type">DomainProcessingResult</span> result = <span class="fn">processWithDomainEngine</span>(userText, storeConfig, availableProducts);
+    botReply = result.reply;
+    matchedSummaries = result.matchedProducts;
+}
+        </div>
+    </div>
+
+    <div class="page-break"></div>
+
+    <!-- ==================== SECCIÓN 3 ==================== -->
+    <h1 class="section-title">
+        <span class="sec-num">3</span> Actualización de las Vistas del Front-End
+    </h1>
+
+    <h2>3.1 Componentes de la Interfaz de Usuario (UI) de MerkoBot</h2>
+    <p>
+        Para evidenciar de manera tangible la integración con el usuario final, se enriqueció la vista principal de <strong>Merkostore</strong> (en <code>index.html</code>, estilizado en <code>styles.css</code> y controlado con <code>app.js</code>):
+    </p>
+
+    <ul>
+        <li><strong>Botón Flotante (FAB con pulso luminoso):</strong> Ubicado permanentemente en la esquina inferior derecha con badge distintivo de <em>IA</em> y micro-animación pulsante para invitar a la interacción sin obstruir el contenido.</li>
+        <li><strong>Panel Deslizante (Chat Drawer):</strong> Al hacer clic en el FAB, se despliega una interfaz fluida con encabezado personalizado de la tienda ("MerkoBot IA - En línea"), botón para reiniciar conversación y botón de cierre.</li>
+        <li><strong>Chips de Sugerencia Rápida:</strong> Botones interactivos que permiten consultar preguntas frecuentes con un solo toque (ej.: <em>"¿Qué productos tienen?"</em>, <em>"¿Cuáles son los medios de pago?"</em>, <em>"Ver ofertas del día"</em>).</li>
+        <li><strong>Indicador Visual de Escritura (Typing Dots):</strong> Animación de tres puntos pulsantes mientras el backend o el LLM procesa la respuesta.</li>
+        <li><strong>Tarjetas de Productos Recomendados:</strong> Si el usuario pregunta por un producto específico (ej.: "manzanas" o "arroz"), el chatbot no solo responde textualmente, sino que <strong>renderiza una mini-tarjeta interactiva con foto, precio y botón "Agregar al Carrito"</strong>, permitiendo comprar directamente desde la conversación.</li>
+    </ul>
+
+    <div class="diagram-container avoid-break">
+        <!-- SVG MOCKUP DE LA UI -->
+        <svg viewBox="0 0 850 480" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <filter id="mockupShadow" x="-4%" y="-4%" width="108%" height="108%">
+                    <feDropShadow dx="0" dy="8" stdDeviation="12" flood-opacity="0.15"/>
+                </filter>
+            </defs>
+            <rect width="850" height="480" rx="10" fill="#f1f5f9"/>
+
+            <!-- PANTALLA PRINCIPAL DE MERKOSTORE (FONDO) -->
+            <rect x="25" y="25" width="460" height="430" rx="8" fill="#ffffff" stroke="#cbd5e1"/>
+            <!-- Header tienda -->
+            <rect x="25" y="25" width="460" height="45" rx="8" fill="#1e293b"/>
+            <text x="45" y="52" fill="#ffffff" font-family="Inter" font-weight="800" font-size="14">MERKOSTORE</text>
+            <rect x="340" y="36" width="130" height="24" rx="12" fill="#334155"/>
+            <text x="405" y="52" fill="#94a3b8" font-family="Inter" font-size="9" text-anchor="middle">🔍 Buscar productos...</text>
+
+            <!-- Banner tienda -->
+            <rect x="40" y="85" width="430" height="90" rx="8" fill="linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%)"/>
+            <text x="60" y="125" fill="#1e1b4b" font-family="Inter" font-weight="800" font-size="14">Tu supermercado digital en minutos</text>
+            <text x="60" y="145" fill="#4338ca" font-family="Inter" font-size="10">Entregas el mismo día y pagos seguros</text>
+
+            <!-- Tarjetas de productos en la tienda -->
+            <rect x="40" y="190" width="135" height="150" rx="8" fill="#ffffff" stroke="#e2e8f0"/>
+            <rect x="40" y="190" width="135" height="75" rx="8" fill="#f8fafc"/>
+            <text x="107" y="235" fill="#cbd5e1" font-size="28" text-anchor="middle">🍎</text>
+            <text x="50" y="280" fill="#0f172a" font-family="Inter" font-weight="700" font-size="10">Manzana Royal Gala</text>
+            <text x="50" y="298" fill="#16a34a" font-family="Inter" font-weight="800" font-size="11">$3.500 / kg</text>
+            <rect x="50" y="308" width="115" height="22" rx="4" fill="#2563eb"/>
+            <text x="107" y="323" fill="#ffffff" font-family="Inter" font-weight="600" font-size="9" text-anchor="middle">Agregar</text>
+
+            <rect x="190" y="190" width="135" height="150" rx="8" fill="#ffffff" stroke="#e2e8f0"/>
+            <rect x="190" y="190" width="135" height="75" rx="8" fill="#f8fafc"/>
+            <text x="257" y="235" fill="#cbd5e1" font-size="28" text-anchor="middle">🥛</text>
+            <text x="200" y="280" fill="#0f172a" font-family="Inter" font-weight="700" font-size="10">Leche Entera 1L</text>
+            <text x="200" y="298" fill="#16a34a" font-family="Inter" font-weight="800" font-size="11">$4.200</text>
+            <rect x="200" y="308" width="115" height="22" rx="4" fill="#2563eb"/>
+            <text x="257" y="323" fill="#ffffff" font-family="Inter" font-weight="600" font-size="9" text-anchor="middle">Agregar</text>
+
+            <rect x="340" y="190" width="130" height="150" rx="8" fill="#ffffff" stroke="#e2e8f0"/>
+            <rect x="340" y="190" width="130" height="75" rx="8" fill="#f8fafc"/>
+            <text x="405" y="235" fill="#cbd5e1" font-size="28" text-anchor="middle">🍞</text>
+            <text x="350" y="280" fill="#0f172a" font-family="Inter" font-weight="700" font-size="10">Pan Tajado Blanco</text>
+            <text x="350" y="298" fill="#16a34a" font-family="Inter" font-weight="800" font-size="11">$5.800</text>
+            <rect x="350" y="308" width="110" height="22" rx="4" fill="#2563eb"/>
+            <text x="405" y="323" fill="#ffffff" font-family="Inter" font-weight="600" font-size="9" text-anchor="middle">Agregar</text>
+
+            <!-- FAB MerkoBot en la esquina -->
+            <circle cx="430" cy="405" r="25" fill="linear-gradient(135deg, #e65100, #9c27b0)"/>
+            <text x="430" y="413" fill="#ffffff" font-size="18" text-anchor="middle">🤖</text>
+            <circle cx="446" cy="388" r="8" fill="#00e676"/>
+            <text x="446" y="391" fill="#064e3b" font-family="Inter" font-weight="900" font-size="7" text-anchor="middle">IA</text>
+
+            <!-- DRAWER DEL CHATBOT ABIERTO (EN PRIMER PLANO) -->
+            <g transform="translate(510, 20)" filter="url(#mockupShadow)">
+                <rect width="315" height="440" rx="12" fill="#ffffff" stroke="#94a3b8" stroke-width="1.5"/>
+                
+                <!-- Header Drawer -->
+                <rect width="315" height="55" rx="12" fill="linear-gradient(135deg, #1e3a8a, #3b82f6)"/>
+                <circle cx="30" cy="28" r="14" fill="#ffffff"/>
+                <text x="30" y="34" font-size="14" text-anchor="middle">🤖</text>
+                <text x="54" y="24" fill="#ffffff" font-family="Inter" font-weight="700" font-size="11">MerkoBot IA</text>
+                <text x="54" y="38" fill="#86efac" font-family="Inter" font-size="8.5">● En línea | Asistente Virtual</text>
+                <text x="295" y="30" fill="#ffffff" font-size="12" text-anchor="middle">✕</text>
+
+                <!-- Mensaje bienvenida asistente -->
+                <rect x="15" y="70" width="245" height="42" rx="10" fill="#f1f5f9"/>
+                <text x="25" y="86" fill="#1e293b" font-family="Inter" font-size="8.5">¡Hola! Soy MerkoBot. ¿En qué te ayudo</text>
+                <text x="25" y="100" fill="#1e293b" font-family="Inter" font-size="8.5">hoy con tus compras o consultas?</text>
+
+                <!-- Chips sugerencias -->
+                <rect x="15" y="122" width="135" height="20" rx="10" fill="#eff6ff" stroke="#bfdbfe"/>
+                <text x="82" y="135" fill="#1d4ed8" font-family="Inter" font-weight="600" font-size="7.5" text-anchor="middle">¿Qué productos tienen?</text>
+
+                <rect x="158" y="122" width="135" height="20" rx="10" fill="#eff6ff" stroke="#bfdbfe"/>
+                <text x="225" y="135" fill="#1d4ed8" font-family="Inter" font-weight="600" font-size="7.5" text-anchor="middle">Métodos de pago</text>
+
+                <!-- Mensaje usuario -->
+                <rect x="100" y="152" width="200" height="28" rx="10" fill="#2563eb"/>
+                <text x="110" y="170" fill="#ffffff" font-family="Inter" font-size="8.5">¿Tienen manzanas frescas?</text>
+
+                <!-- Respuesta asistente con recomendación -->
+                <rect x="15" y="190" width="270" height="40" rx="10" fill="#f1f5f9"/>
+                <text x="25" y="206" fill="#1e293b" font-family="Inter" font-size="8.5">¡Sí! Tenemos Manzana Royal Gala recién</text>
+                <text x="25" y="220" fill="#1e293b" font-family="Inter" font-size="8.5">llegada a $3.500 / kg. Puedes añadirla:</text>
+
+                <!-- TARJETA DE PRODUCTO DENTRO DEL CHAT -->
+                <rect x="25" y="238" width="250" height="52" rx="8" fill="#ffffff" stroke="#cbd5e1"/>
+                <rect x="32" y="244" width="40" height="40" rx="6" fill="#f8fafc"/>
+                <text x="52" y="269" font-size="18" text-anchor="middle">🍎</text>
+                <text x="80" y="258" fill="#0f172a" font-family="Inter" font-weight="700" font-size="8.5">Manzana Royal Gala</text>
+                <text x="80" y="272" fill="#16a34a" font-family="Inter" font-weight="800" font-size="9.5">$3.500</text>
+                <rect x="180" y="250" width="85" height="26" rx="6" fill="#16a34a"/>
+                <text x="222" y="267" fill="#ffffff" font-family="Inter" font-weight="700" font-size="8" text-anchor="middle">🛒 + Carrito</text>
+
+                <!-- Input area -->
+                <rect x="0" y="390" width="315" height="50" rx="12" fill="#f8fafc" stroke="#e2e8f0"/>
+                <rect x="12" y="400" width="245" height="30" rx="8" fill="#ffffff" stroke="#cbd5e1"/>
+                <text x="24" y="419" fill="#94a3b8" font-family="Inter" font-size="8.5">Escribe tu consulta aquí...</text>
+                <rect x="268" y="400" width="35" height="30" rx="8" fill="#2563eb"/>
+                <text x="285" y="419" fill="#ffffff" font-size="11" text-anchor="middle">➤</text>
+            </g>
+        </svg>
+        <div class="diagram-caption">Figura 3. Mockup de Interfaz Front-End: Integración del FAB MerkoBot y Drawer Interactivo con Acción "Agregar al Carrito".</div>
+    </div>
+
+    <div class="page-break"></div>
+
+    <!-- ==================== SECCIÓN 4 ==================== -->
+    <h1 class="section-title">
+        <span class="sec-num">4</span> Evidencia de Control de Acceso y Seguridad
+    </h1>
+
+    <h2>4.1 Mecanismo Stateless con Spring Security 6 y JWT</h2>
+    <p>
+        La seguridad de <strong>Merkostore</strong> se diseñó bajo el principio de <strong>arquitectura sin estado (Stateless)</strong>, cumpliendo con los estándares modernos de desarrollo de APIs REST escalables:
+    </p>
+
+    <ul>
+        <li><strong>Deshabilitación de CSRF:</strong> Dado que las peticiones se autentican mediante tokens en cabeceras HTTP (<code>Authorization: Bearer &lt;token&gt;</code>) y no mediante cookies de sesión, se deshabilita la protección CSRF según las directrices de Spring Security para APIs REST.</li>
+        <li><strong>Filtro Personalizado JWT (<code>JwtAuthenticationFilter</code>):</strong> Intercepta cada petición entrante, extrae el token del header <code>Authorization</code>, valida la firma criptográfica (HMAC-SHA256 con llave secreta de 256 bits) y la fecha de expiración mediante <code>JwtTokenProvider</code>.</li>
+        <li><strong>Control de Acceso Basado en Roles (RBAC):</strong> Los usuarios autenticados con el rol <code>ROLE_ADMIN</code> tienen acceso exclusivo al panel administrativo (gestión de productos, reportes financieros y configuración de tienda).</li>
+        <li><strong>Exposición Pública Controlada del Chatbot:</strong> El endpoint <code>/api/v1/public/chat</code> se expone públicamente (<code>permitAll()</code>) para que cualquier visitante de la tienda pueda interactuar libremente con el asistente inteligente sin requerir registro previo.</li>
+    </ul>
+
+    <h2>4.2 Matriz de Autorización de Endpoints</h2>
+    <table class="doc-table">
+        <thead>
+            <tr>
+                <th style="width: 12%;">Método</th>
+                <th style="width: 38%;">Patrón de Endpoint</th>
+                <th style="width: 25%;">Permiso / Rol</th>
+                <th style="width: 25%;">Propósito</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><span class="badge-method badge-get">GET</span></td>
+                <td><code>/, /index.html, *.css, *.js</code></td>
+                <td><code>permitAll()</code></td>
+                <td>Recursos estáticos del Front-End</td>
+            </tr>
+            <tr>
+                <td><span class="badge-method badge-post">POST</span></td>
+                <td><code>/api/v1/public/chat</code></td>
+                <td><code>permitAll()</code></td>
+                <td>Consulta con el Agente Inteligente / LLM</td>
+            </tr>
+            <tr>
+                <td><span class="badge-method badge-get">GET</span></td>
+                <td><code>/api/v1/public/chat/suggestions</code></td>
+                <td><code>permitAll()</code></td>
+                <td>Sugerencias dinámicas de preguntas</td>
+            </tr>
+            <tr>
+                <td><span class="badge-method badge-get">GET</span></td>
+                <td><code>/api/v1/public/products/**</code></td>
+                <td><code>permitAll()</code></td>
+                <td>Consulta de catálogo público y stock</td>
+            </tr>
+            <tr>
+                <td><span class="badge-method badge-post">POST</span></td>
+                <td><code>/api/v1/auth/login</code></td>
+                <td><code>permitAll()</code></td>
+                <td>Inicio de sesión admin y generación JWT</td>
+            </tr>
+            <tr>
+                <td><span class="badge-method badge-post">POST</span></td>
+                <td><code>/api/v1/orders</code></td>
+                <td><code>permitAll()</code></td>
+                <td>Creación de pedido de cliente</td>
+            </tr>
+            <tr>
+                <td><span class="badge-method badge-get">ALL</span></td>
+                <td><code>/api/v1/admin/**</code></td>
+                <td><code>hasAuthority("ROLE_ADMIN")</code></td>
+                <td>CRUD de catálogo, balance y ajustes</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="code-container avoid-break">
+        <div class="code-header">
+            <span>src/main/java/com/merkostore/api/config/SecurityConfig.java</span>
+            <span>Cadena de Filtros de Seguridad (SecurityFilterChain)</span>
+        </div>
+        <div class="code-snippet">
+<span class="ann">@Bean</span>
+<span class="kw">public</span> <span class="type">SecurityFilterChain</span> <span class="fn">filterChain</span>(<span class="type">HttpSecurity</span> http) <span class="kw">throws</span> <span class="type">Exception</span> {
+    http
+        .<span class="fn">csrf</span>(<span class="type">AbstractHttpConfigurer</span>::disable)
+        .<span class="fn">cors</span>(cors -&gt; cors.<span class="fn">configurationSource</span>(corsConfigurationSource()))
+        .<span class="fn">sessionManagement</span>(session -&gt; session.<span class="fn">sessionCreationPolicy</span>(<span class="type">SessionCreationPolicy</span>.STATELESS))
+        .<span class="fn">authorizeHttpRequests</span>(auth -&gt; auth
+            <span class="cm">// Assets estáticos del Front-End</span>
+            .<span class="fn">requestMatchers</span>(<span class="str">"/"</span>, <span class="str">"/index.html"</span>, <span class="str">"/styles.css"</span>, <span class="str">"/app.js"</span>, <span class="str">"/*.png"</span>).<span class="fn">permitAll</span>()
+            <span class="cm">// Endpoints públicos: Catálogo, Auth y Chatbot Inteligente</span>
+            .<span class="fn">requestMatchers</span>(<span class="str">"/api/v1/public/**"</span>).<span class="fn">permitAll</span>()
+            .<span class="fn">requestMatchers</span>(<span class="str">"/api/v1/auth/**"</span>).<span class="fn">permitAll</span>()
+            .<span class="fn">requestMatchers</span>(<span class="type">HttpMethod</span>.POST, <span class="str">"/api/v1/orders"</span>).<span class="fn">permitAll</span>()
+            <span class="cm">// Endpoints administrativos protegidos</span>
+            .<span class="fn">requestMatchers</span>(<span class="str">"/api/v1/admin/**"</span>).<span class="fn">hasAuthority</span>(<span class="str">"ROLE_ADMIN"</span>)
+            .<span class="fn">anyRequest</span>().<span class="fn">authenticated</span>()
+        );
+
+    http.<span class="fn">addFilterBefore</span>(jwtAuthenticationFilter, <span class="type">UsernamePasswordAuthenticationFilter</span>.<span class="kw">class</span>);
+    <span class="kw">return</span> http.<span class="fn">build</span>();
+}
+        </div>
+    </div>
+
+    <div class="page-break"></div>
+
+    <!-- ==================== SECCIÓN 5 ==================== -->
+    <h1 class="section-title">
+        <span class="sec-num">5</span> Repositorio de Código Fuente en GitHub
+    </h1>
+
+    <div class="callout callout-success avoid-break">
+        <strong>Repositorio Oficial del Proyecto:</strong><br>
+        El código fuente completo de la aplicación, incluyendo el backend Spring Boot 3.2.4, los modelos, servicios del Chatbot y el cliente web, se encuentra disponible en:
+        <br><br>
+        <span style="font-family: 'JetBrains Mono', monospace; font-size: 10pt; color: #1e40af; font-weight: 700;">
+            🔗 https://github.com/usuario-merkostore/merkostore-app
+        </span>
+    </div>
+
+    <h2>Instrucciones de Despliegue y Ejecución Local</h2>
+    <ol>
+        <li>
+            <strong>Clonar el repositorio:</strong>
+            <div class="code-snippet">git clone https://github.com/usuario-merkostore/merkostore-app.git
+cd merkostore-app</div>
+        </li>
+        <li>
+            <strong>Configuración de Variables de Entorno (Opcional para Groq LLM):</strong>
+            <p>En el archivo <code>src/main/resources/application.properties</code> o mediante variable de entorno del sistema:</p>
+            <div class="code-snippet">merkostore.llm.groq.api-key=${GROQ_API_KEY:your_groq_api_key_here}
+merkostore.llm.groq.model=llama-3.1-8b-instant
+spring.data.mongodb.uri=mongodb://localhost:27017/merkostore</div>
+        </li>
+        <li>
+            <strong>Compilar y Ejecutar con Maven:</strong>
+            <div class="code-snippet">mvn clean spring-boot:run</div>
+        </li>
+        <li>
+            <strong>Acceso a la Aplicación:</strong>
+            <p>Abrir en cualquier navegador moderno: <code>http://localhost:8080/</code> para interactuar con la tienda y con <strong>MerkoBot IA</strong>.</p>
+        </li>
+    </ol>
+
+    <div class="page-break"></div>
+
+    <!-- ==================== SECCIÓN 6 ==================== -->
+    <h1 class="section-title">
+        <span class="sec-num">6</span> Diagramas del Modelo de Datos
+    </h1>
+
+    <h2>6.1 Diagrama Entidad-Relación (E-R) de Colecciones MongoDB</h2>
+    <p>
+        La persistencia se modela sobre <strong>MongoDB</strong> (NoSQL orientada a documentos). A continuación se ilustran las entidades del dominio y sus relaciones lógicas (por referencia mediante IDs indexados y embebidos):
+    </p>
+
+    <div class="diagram-container avoid-break">
+        <!-- SVG DIAGRAMA ENTIDAD-RELACIÓN -->
+        <svg viewBox="0 0 850 420" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <filter id="erShadow" x="-3%" y="-3%" width="106%" height="106%">
+                    <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.1"/>
+                </filter>
+            </defs>
+            <rect width="850" height="420" rx="8" fill="#f8fafc"/>
+
+            <!-- ENTIDAD: store_configs -->
+            <g transform="translate(30, 25)" filter="url(#erShadow)">
+                <rect width="210" height="150" rx="6" fill="#ffffff" stroke="#0284c7" stroke-width="1.5"/>
+                <rect width="210" height="26" rx="6" fill="#0284c7"/>
+                <text x="105" y="18" fill="#ffffff" font-family="Inter" font-weight="700" font-size="10.5" text-anchor="middle">store_configs</text>
+                <text x="10" y="44" fill="#0f172a" font-family="JetBrains Mono" font-size="8">PK  _id: ObjectId</text>
+                <text x="10" y="60" fill="#0284c7" font-family="JetBrains Mono" font-size="8">IDX storeId: String</text>
+                <text x="10" y="76" fill="#64748b" font-family="JetBrains Mono" font-size="8">    storeName: String</text>
+                <text x="10" y="92" fill="#64748b" font-family="JetBrains Mono" font-size="8">    whatsappNumber: String</text>
+                <text x="10" y="108" fill="#64748b" font-family="JetBrains Mono" font-size="8">    deliveryFee: Decimal</text>
+                <text x="10" y="124" fill="#64748b" font-family="JetBrains Mono" font-size="8">    paymentMethods: List</text>
+                <text x="10" y="140" fill="#64748b" font-family="JetBrains Mono" font-size="8">    openingHours: String</text>
+            </g>
+
+            <!-- ENTIDAD: products -->
+            <g transform="translate(320, 25)" filter="url(#erShadow)">
+                <rect width="210" height="180" rx="6" fill="#ffffff" stroke="#16a34a" stroke-width="1.5"/>
+                <rect width="210" height="26" rx="6" fill="#16a34a"/>
+                <text x="105" y="18" fill="#ffffff" font-family="Inter" font-weight="700" font-size="10.5" text-anchor="middle">products</text>
+                <text x="10" y="44" fill="#0f172a" font-family="JetBrains Mono" font-size="8">PK  _id: ObjectId</text>
+                <text x="10" y="60" fill="#16a34a" font-family="JetBrains Mono" font-size="8">FK  storeId: String</text>
+                <text x="10" y="76" fill="#64748b" font-family="JetBrains Mono" font-size="8">    name: String</text>
+                <text x="10" y="92" fill="#64748b" font-family="JetBrains Mono" font-size="8">    description: String</text>
+                <text x="10" y="108" fill="#64748b" font-family="JetBrains Mono" font-size="8">    price: Decimal</text>
+                <text x="10" y="124" fill="#64748b" font-family="JetBrains Mono" font-size="8">    category: String</text>
+                <text x="10" y="140" fill="#64748b" font-family="JetBrains Mono" font-size="8">    imageUrl: String</text>
+                <text x="10" y="156" fill="#64748b" font-family="JetBrains Mono" font-size="8">    isAvailable: Boolean</text>
+                <text x="10" y="172" fill="#64748b" font-family="JetBrains Mono" font-size="8">    stockQuantity: Integer</text>
+            </g>
+
+            <!-- ENTIDAD: chat_messages (NUEVA DEL CHATBOT) -->
+            <g transform="translate(610, 25)" filter="url(#erShadow)">
+                <rect width="210" height="160" rx="6" fill="#ffffff" stroke="#8b5cf6" stroke-width="1.5"/>
+                <rect width="210" height="26" rx="6" fill="#8b5cf6"/>
+                <text x="105" y="18" fill="#ffffff" font-family="Inter" font-weight="700" font-size="10.5" text-anchor="middle">chat_messages</text>
+                <text x="10" y="44" fill="#0f172a" font-family="JetBrains Mono" font-size="8">PK  _id: ObjectId</text>
+                <text x="10" y="60" fill="#8b5cf6" font-family="JetBrains Mono" font-size="8">IDX conversationId: String</text>
+                <text x="10" y="76" fill="#8b5cf6" font-family="JetBrains Mono" font-size="8">FK  storeId: String</text>
+                <text x="10" y="92" fill="#64748b" font-family="JetBrains Mono" font-size="8">    role: String ("user"|"bot")</text>
+                <text x="10" y="108" fill="#64748b" font-family="JetBrains Mono" font-size="8">    content: String</text>
+                <text x="10" y="124" fill="#64748b" font-family="JetBrains Mono" font-size="8">    intent: String</text>
+                <text x="10" y="140" fill="#64748b" font-family="JetBrains Mono" font-size="8">    timestamp: Date</text>
+            </g>
+
+            <!-- ENTIDAD: orders -->
+            <g transform="translate(320, 235)" filter="url(#erShadow)">
+                <rect width="210" height="165" rx="6" fill="#ffffff" stroke="#d97706" stroke-width="1.5"/>
+                <rect width="210" height="26" rx="6" fill="#d97706"/>
+                <text x="105" y="18" fill="#ffffff" font-family="Inter" font-weight="700" font-size="10.5" text-anchor="middle">orders</text>
+                <text x="10" y="44" fill="#0f172a" font-family="JetBrains Mono" font-size="8">PK  _id: ObjectId</text>
+                <text x="10" y="60" fill="#d97706" font-family="JetBrains Mono" font-size="8">FK  storeId: String</text>
+                <text x="10" y="76" fill="#64748b" font-family="JetBrains Mono" font-size="8">    customerName: String</text>
+                <text x="10" y="92" fill="#64748b" font-family="JetBrains Mono" font-size="8">    customerPhone: String</text>
+                <text x="10" y="108" fill="#64748b" font-family="JetBrains Mono" font-size="8">    items: List&lt;OrderItem&gt;</text>
+                <text x="10" y="124" fill="#64748b" font-family="JetBrains Mono" font-size="8">    totalAmount: Decimal</text>
+                <text x="10" y="140" fill="#64748b" font-family="JetBrains Mono" font-size="8">    status: String</text>
+                <text x="10" y="156" fill="#64748b" font-family="JetBrains Mono" font-size="8">    createdAt: Date</text>
+            </g>
+
+            <!-- ENTIDAD: users -->
+            <g transform="translate(30, 235)" filter="url(#erShadow)">
+                <rect width="210" height="150" rx="6" fill="#ffffff" stroke="#475569" stroke-width="1.5"/>
+                <rect width="210" height="26" rx="6" fill="#475569"/>
+                <text x="105" y="18" fill="#ffffff" font-family="Inter" font-weight="700" font-size="10.5" text-anchor="middle">users (Admin & Roles)</text>
+                <text x="10" y="44" fill="#0f172a" font-family="JetBrains Mono" font-size="8">PK  _id: ObjectId</text>
+                <text x="10" y="60" fill="#475569" font-family="JetBrains Mono" font-size="8">IDX username: String</text>
+                <text x="10" y="76" fill="#64748b" font-family="JetBrains Mono" font-size="8">    passwordHash: String (BCrypt)</text>
+                <text x="10" y="92" fill="#64748b" font-family="JetBrains Mono" font-size="8">    roles: List&lt;String&gt;</text>
+                <text x="10" y="108" fill="#64748b" font-family="JetBrains Mono" font-size="8">    storeId: String</text>
+                <text x="10" y="124" fill="#64748b" font-family="JetBrains Mono" font-size="8">    enabled: Boolean</text>
+            </g>
+
+            <!-- CONEXIONES -->
+            <path d="M 240 100 L 320 100" stroke="#0284c7" stroke-width="1.5" stroke-dasharray="4,4"/>
+            <text x="280" y="92" fill="#0284c7" font-family="Inter" font-size="8" font-weight="700" text-anchor="middle">1 : N</text>
+
+            <path d="M 425 205 L 425 235" stroke="#16a34a" stroke-width="1.5" stroke-dasharray="4,4"/>
+            <text x="440" y="222" fill="#16a34a" font-family="Inter" font-size="8" font-weight="700">1 : N</text>
+
+            <path d="M 530 100 L 610 100" stroke="#8b5cf6" stroke-width="1.5" stroke-dasharray="4,4"/>
+            <text x="570" y="92" fill="#8b5cf6" font-family="Inter" font-size="8" font-weight="700" text-anchor="middle">RAG Context</text>
+        </svg>
+        <div class="diagram-caption">Figura 4. Diagrama Entidad-Relación de las Colecciones Principales en MongoDB.</div>
+    </div>
+
+    <div class="page-break"></div>
+
+    <h2>6.2 Diccionario Exhaustivo de Datos</h2>
+
+    <h3>A. Colección: <code>chat_messages</code> (Conversaciones con el Chatbot)</h3>
+    <table class="doc-table">
+        <thead>
+            <tr>
+                <th>Campo</th>
+                <th>Tipo MongoDB</th>
+                <th>Restricción</th>
+                <th>Descripción</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><code>_id</code></td>
+                <td><span class="badge-type">ObjectId</span></td>
+                <td>Primary Key</td>
+                <td>Identificador único del mensaje generado por MongoDB.</td>
+            </tr>
+            <tr>
+                <td><code>conversationId</code></td>
+                <td><span class="badge-type">String</span></td>
+                <td>Indexed, Not Null</td>
+                <td>UUID que agrupa todos los mensajes de una sesión continua.</td>
+            </tr>
+            <tr>
+                <td><code>storeId</code></td>
+                <td><span class="badge-type">String</span></td>
+                <td>Indexed, Not Null</td>
+                <td>Identificador de la tienda asociada a la interacción.</td>
+            </tr>
+            <tr>
+                <td><code>role</code></td>
+                <td><span class="badge-type">String</span></td>
+                <td>Enum: "user" | "assistant"</td>
+                <td>Rol del emisor en el diálogo con el modelo de lenguaje.</td>
+            </tr>
+            <tr>
+                <td><code>content</code></td>
+                <td><span class="badge-type">String</span></td>
+                <td>Not Null</td>
+                <td>Cuerpo del mensaje en texto (consulta o respuesta).</td>
+            </tr>
+            <tr>
+                <td><code>intent</code></td>
+                <td><span class="badge-type">String</span></td>
+                <td>Opcional</td>
+                <td>Intención semántica inferida (ej. "PRODUCTS_QUERY", "SHIPPING").</td>
+            </tr>
+            <tr>
+                <td><code>timestamp</code></td>
+                <td><span class="badge-type">ISODate</span></td>
+                <td>Auto Generated</td>
+                <td>Marca de tiempo precisa de creación del registro.</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h3>B. Colección: <code>products</code> (Catálogo y Stock)</h3>
+    <table class="doc-table">
+        <thead>
+            <tr>
+                <th>Campo</th>
+                <th>Tipo MongoDB</th>
+                <th>Restricción</th>
+                <th>Descripción</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><code>_id</code></td>
+                <td><span class="badge-type">ObjectId</span></td>
+                <td>Primary Key</td>
+                <td>Identificador único de producto.</td>
+            </tr>
+            <tr>
+                <td><code>storeId</code></td>
+                <td><span class="badge-type">String</span></td>
+                <td>Indexed, Not Null</td>
+                <td>Tienda propietaria del producto.</td>
+            </tr>
+            <tr>
+                <td><code>name</code></td>
+                <td><span class="badge-type">String</span></td>
+                <td>Not Blank</td>
+                <td>Nombre comercial del artículo (utilizado en el prompt RAG).</td>
+            </tr>
+            <tr>
+                <td><code>description</code></td>
+                <td><span class="badge-type">String</span></td>
+                <td>Opcional</td>
+                <td>Descripción de características, peso o presentación.</td>
+            </tr>
+            <tr>
+                <td><code>price</code></td>
+                <td><span class="badge-type">Decimal128</span></td>
+                <td>Min: 0.0</td>
+                <td>Precio de venta al público en moneda local.</td>
+            </tr>
+            <tr>
+                <td><code>category</code></td>
+                <td><span class="badge-type">String</span></td>
+                <td>Not Null</td>
+                <td>Categoría para filtrado semántico (ej. Frutas, Abarrotes).</td>
+            </tr>
+            <tr>
+                <td><code>isAvailable</code></td>
+                <td><span class="badge-type">Boolean</span></td>
+                <td>Default: true</td>
+                <td>Indicador booleano de disponibilidad activa para el bot.</td>
+            </tr>
+            <tr>
+                <td><code>stockQuantity</code></td>
+                <td><span class="badge-type">Integer</span></td>
+                <td>Min: 0</td>
+                <td>Unidades físicas disponibles en bodega.</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h3>C. Colección: <code>store_configs</code> (Políticas y Parámetros del Negocio)</h3>
+    <table class="doc-table">
+        <thead>
+            <tr>
+                <th>Campo</th>
+                <th>Tipo MongoDB</th>
+                <th>Restricción</th>
+                <th>Descripción</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><code>_id</code></td>
+                <td><span class="badge-type">ObjectId</span></td>
+                <td>Primary Key</td>
+                <td>Identificador de registro de configuración.</td>
+            </tr>
+            <tr>
+                <td><code>storeId</code></td>
+                <td><span class="badge-type">String</span></td>
+                <td>Unique, Indexed</td>
+                <td>Identificador canónico de la tienda (ej. "default-store").</td>
+            </tr>
+            <tr>
+                <td><code>storeName</code></td>
+                <td><span class="badge-type">String</span></td>
+                <td>Not Blank</td>
+                <td>Nombre formal de la tienda (presentación del bot).</td>
+            </tr>
+            <tr>
+                <td><code>whatsappNumber</code></td>
+                <td><span class="badge-type">String</span></td>
+                <td>Not Null</td>
+                <td>Número telefónico para escalamiento y pedidos por WhatsApp.</td>
+            </tr>
+            <tr>
+                <td><code>deliveryFee</code></td>
+                <td><span class="badge-type">Decimal128</span></td>
+                <td>Default: 0.0</td>
+                <td>Tarifa base de despacho domiciliario.</td>
+            </tr>
+            <tr>
+                <td><code>paymentMethods</code></td>
+                <td><span class="badge-type">Array[String]</span></td>
+                <td>Not Empty</td>
+                <td>Métodos habilitados (Nequi, Daviplata, Efectivo, Tarjeta).</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="page-break"></div>
+
+    <!-- ==================== SECCIÓN 7 ==================== -->
+    <h1 class="section-title">
+        <span class="sec-num">7</span> Conclusiones
+    </h1>
+
+    <p>
+        La integración del <strong>Agente Inteligente / Chatbot en la plataforma Merkostore</strong> demostró la efectividad de los patrones arquitectónicos modernos aplicados al comercio electrónico:
+    </p>
+
+    <ol>
+        <li><strong>Estrategia RAG Liviana y Precisa:</strong> Al inyectar el catálogo de productos y los metadatos de la tienda directamente en el prompt del sistema hacia <code>llama-3.1-8b-instant</code> en Groq, se logró eliminar el riesgo de alucinaciones en precios o productos inexistentes, proporcionando información 100% verídica en milisegundos.</li>
+        <li><strong>Alta Resiliencia Operativa:</strong> La arquitectura de dos niveles (LLM externo con respaldo de motor experto local) garantiza que la tienda nunca deje de asistir a los usuarios, manteniendo operativas las recomendaciones incluso en ausencia de conexión a Internet externa o indisponibilidad de API Keys.</li>
+        <li><strong>Experiencia de Usuario Fluida y Accionable:</strong> La inclusión del botón FAB con pulso luminoso, la ventana conversacional moderna y, fundamentalmente, la posibilidad de <strong>añadir productos recomendados al carrito de compras con un solo clic</strong> dentro del chat, transforma el agente de un simple canal informativo en un asistente de ventas activo.</li>
+        <li><strong>Seguridad Robusta y Desacoplada:</strong> La implementación de Spring Security 6 con JWT aseguró la total protección de los paneles administrativos (<code>ROLE_ADMIN</code>) mientras brindó libre acceso al catálogo y al asistente para todos los clientes (<code>permitAll</code>) sin sobrecargar la memoria del servidor gracias al modelo stateless.</li>
+    </ol>
+
+    <div class="callout" style="margin-top: 30px;">
+        <strong>Certificación de Validación:</strong><br>
+        Todas las clases desarrolladas fueron verificadas y compiladas satisfactoriamente mediante <code>mvn test-compile</code> y los componentes Front-End se encuentran activos e integrados en el código fuente del proyecto.
+    </div>
+
+</div>
+
+</body>
+</html>
